@@ -1,8 +1,8 @@
-export const vertex=`#version 300 es
+export const vertex = `#version 300 es
 in vec2 position;
 out vec2 uv;
 void main(){uv=position*.5+.5;gl_Position=vec4(position,0.,1.);}`;
-export const fragment=`#version 300 es
+export const fragment = `#version 300 es
 precision highp float;
 in vec2 uv;out vec4 color;
 uniform vec2 resolution;
