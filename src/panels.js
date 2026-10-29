@@ -1,4 +1,4 @@
-import { app, $, el, button, input, field, select, help, panelError, openDrawer, closeDrawer, safe, notify, changed, picture, assetCard, chooseImage, renderAssets, renderMacros, updateImages, loadScene, addImage } from './app.js';
+import { app, $, el, button, input, field, select, help, panelError, openDrawer, closeDrawer, safe, notify, changed, saveSession, picture, assetCard, chooseImage, renderAssets, renderMacros, updateImages, loadScene, addImage } from './app.js';
 import { PARAMETERS, createScene, validateScene, clamp } from './core/instrument.js';
 import { sceneEnvelope, validateEnvelope } from './storage/library.js';
 const parameterOptions = () => Object.entries(PARAMETERS).map(([k, p]) => [k, p.label]);
@@ -258,7 +258,7 @@ function scenesPanel() {
       await app.db.put('scenes', app.instrument.scene);
       app.scenes = await app.db.list('scenes');
       $('#scene-title').textContent = app.instrument.scene.name;
-      changed();
+      await saveSession();
       scenesPanel();
       notify('Cena salva com imagens, macros e associações.');
     }, 'gold'), button('Nova cena', async () => {

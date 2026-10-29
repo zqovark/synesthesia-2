@@ -12,7 +12,7 @@ const server = spawn(process.execPath, ['server/index.mjs'], {
   },
   stdio: 'inherit'
 });
-let browser;
+let browser, page;
 try {
   for (let i = 0; i < 100; i++) {
     try {
@@ -24,13 +24,13 @@ try {
     headless: true,
     args: ['--no-sandbox', '--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--autoplay-policy=no-user-gesture-required']
   });
-  const page = await browser.newPage({
+  page = await browser.newPage({
       viewport: {
         width: 1440,
         height: 1000
       }
-    }),
-    errors = [];
+    });
+  const errors = [];
   page.on('pageerror', e => errors.push(e.message));
   await page.addInitScript(() => {
     window.__pad = null;
@@ -50,6 +50,7 @@ try {
     name: 'Salvar cena',
     exact: true
   }).click();
+  await page.waitForFunction(() => document.querySelector('#status').textContent.startsWith('Cena salva'));
   await page.locator('#drawer-close').click();
   await page.reload();
   await page.waitForFunction(() => document.querySelector('#scene-title').textContent === 'Visão persistida');
@@ -194,6 +195,13 @@ try {
   assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false, 'mobile page overflows horizontally');
   assert.deepEqual(errors, []);
   console.log('Browser smoke passed: GPU, upload persistence, macros, scenes, Web Audio, simulated Xbox and generation.');
+} catch(error) {
+  if(page){
+    console.error('UI status:',await page.locator('#status').textContent().catch(()=>'?'));
+    await mkdir('test-results',{recursive:true});
+    await page.screenshot({path:'test-results/failure.png',fullPage:true,timeout:10000}).catch(()=>{});
+  }
+  throw error;
 } finally {
   await browser?.close();
   server.kill('SIGTERM');

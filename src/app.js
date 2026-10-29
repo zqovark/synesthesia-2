@@ -64,17 +64,20 @@ app.gamepad = new GamepadInput(dispatch);
 let timer, lastFocus;
 const thumbs = new Map();
 export function changed() {
+  if (timer) return;
+  timer = setTimeout(safe(saveSession), 400);
+}
+export async function saveSession() {
   clearTimeout(timer);
-  timer = setTimeout(safe(async () => {
-    if (app.db) await app.db.put('settings', {
+  timer = null;
+  if (app.db) await app.db.put('settings', {
       id: 'session',
       scene: app.instrument.scene,
       selectedMacro: app.selectedMacro,
       selectedParameter: app.selectedParameter,
       mapping: app.gamepad.mapping,
       deadzone: app.gamepad.deadzone
-    });
-  }), 400);
+  });
 }
 export function el(tag, cls, text) {
   const n = document.createElement(tag);
@@ -482,5 +485,6 @@ window.addEventListener('pagehide', () => {
   app.renderer?.dispose();
   void app.audio.dispose();
   for (const url of thumbs.values()) URL.revokeObjectURL(url);
-  app.db?.close();
+  void saveSession().finally(() => app.db?.close());
 });
+document.addEventListener('visibilitychange', () => { if (document.hidden) void safe(saveSession)(); });
