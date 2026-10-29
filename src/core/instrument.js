@@ -1,4 +1,5 @@
 /** Pure performance kernel: no DOM, network, storage or GPU dependencies. */
+import {transportConfig} from './transport.js';
 export const PARAMETERS = Object.freeze({
   blend: {
     label: 'Mescla',
@@ -122,6 +123,7 @@ export function createScene(name = 'Primeira luz') {
     id: 'scene-' + Date.now(),
     name,
     images: ['builtin-0', 'builtin-1'],
+    transport: transportConfig(),
     base: Object.fromEntries(Object.entries(PARAMETERS).map(([k, p]) => [k, p.initial])),
     macros: structuredClone(DEFAULT_MACROS),
     bindings: [{
@@ -157,6 +159,7 @@ export function createScene(name = 'Primeira luz') {
 export function validateScene(input) {
   if (!input || input.version !== 1 || typeof input.name !== 'string' || input.name.length > 100 || !input.base || !Array.isArray(input.macros) || !Array.isArray(input.bindings) || !Array.isArray(input.images)) throw new Error('Cena inválida ou versão incompatível.');
   const scene = structuredClone(input);
+  scene.transport = transportConfig(scene.transport);
   if (scene.macros.length > 24 || scene.bindings.length > 64 || scene.images.length > 2 || !scene.images.every(x => typeof x === 'string')) throw new Error('Limites da cena excedidos.');
   for (const [key, p] of Object.entries(PARAMETERS)) {
     if (!Number.isFinite(scene.base[key])) throw new Error('Parâmetro inválido: ' + key);
