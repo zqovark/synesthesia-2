@@ -9,7 +9,7 @@ test('static build supports a Pages subdirectory and excludes service and creden
   try {
     await buildPreview(temp);
     const files=await readdir(temp),html=await readFile(path.join(temp,'index.html'),'utf8');
-    assert.deepEqual(files.sort(),['.nojekyll','index.html','src','style.css']);
+    assert.deepEqual(files.sort(),['.nojekyll','decks.css','index.html','src','style.css']);
     assert.match(html,/data-mode="preview"/);
     assert.match(html,/src="\.\/src\/app.js"/);
     assert.match(html,/href="\.\/style.css"/);

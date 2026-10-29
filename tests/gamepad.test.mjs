@@ -1,6 +1,13 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { GamepadInput, deadzone } from '../src/input/gamepad.js';
+test('LS dispatches optional voice once; triggers keep their continuous role',()=>{
+  const events=[],g=new GamepadInput((...x)=>events.push(x)),p=pad();g.poll([p],.016,0);g.poll([p],.016,.1);
+  p.buttons[10].value=1;g.poll([p],.016,.2);g.poll([p],.016,.3);
+  assert.equal(events.filter(e=>e[0]==='voice').length,1);
+  p.buttons[10].value=0;p.buttons[7].value=1;g.poll([p],.016,.4);
+  assert.ok(events.some(e=>e[0]==='macroDelta'));assert.equal(events.filter(e=>e[0]==='voice').length,1);
+});
 const pad = () => ({
   index: 0,
   id: 'Xbox test',

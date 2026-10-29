@@ -115,7 +115,7 @@ export function createApp({
         error: 'Método não permitido.'
       }, 405);
       const relative = url.pathname === '/' ? 'index.html' : decodeURIComponent(url.pathname).slice(1);
-      if (!(relative === 'index.html' || relative === 'style.css' || relative.startsWith('src/') || relative.startsWith('public/')) || relative.split('/').some(p => p === '..' || p.startsWith('.'))) return json({
+      if (!(relative === 'index.html' || relative === 'style.css' || relative === 'decks.css' || relative.startsWith('src/') || relative.startsWith('public/')) || relative.split('/').some(p => p === '..' || p.startsWith('.'))) return json({
         error: 'Arquivo não encontrado.'
       }, 404);
       const file = path.resolve(root, relative);

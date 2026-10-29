@@ -98,16 +98,16 @@ export class Renderer {
       URL.revokeObjectURL(url);
     }
   }
-  async setImages(assets) {
+  async setImages(assets, {immediate=false} = {}) {
     const ticket = ++this.ticket;
     this.pending ??= new Map();
     this.pending.set(ticket, new Set(assets.filter(Boolean).map(a => a.id)));
     try {
       const ids = await Promise.all([this.load(assets[0]), this.load(assets[1])]);
       if (ticket !== this.ticket || this.dead) return;
-      this.previous = this.current;
+      this.previous = immediate ? [null,null] : this.current;
       this.current = ids;
-      this.changed = performance.now();
+      this.changed = performance.now() - (immediate ? 1000 : 0);
     } finally {
       this.pending.delete(ticket);
       this.prune();

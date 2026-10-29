@@ -29,6 +29,11 @@ try{
   await page.waitForFunction(()=>!!document.querySelector('#generate-open').onclick);
   assert.match(await page.locator('.brand small').textContent(),/PREVIEW ONLINE/);
   assert.match(await page.locator('.brand').getAttribute('href'),/\.\//);
+  await page.waitForFunction(()=>!!document.querySelector('#voice-open')&&!!document.querySelector('#image-play'));
+  await page.locator('#voice-open').click();
+  assert.equal(await page.locator('#voice-enabled').isDisabled(),true);
+  assert.equal(await page.locator('#voice-record').isDisabled(),true);
+  await page.locator('#drawer-close').click();
   await page.locator('#generate-open').click();
   assert.equal(await page.getByRole('button',{name:'Gerar uma imagem',exact:true}).isDisabled(),true);
   assert.match(await page.locator('#drawer-body').textContent(),/versão local/);

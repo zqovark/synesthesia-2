@@ -360,6 +360,7 @@ function settingsPanel() {
       previousParameter: 'Efeito anterior',
       nextParameter: 'Próximo efeito',
       performance: 'Performance'
+      ,voice:'Voz / próxima imagem'
     };
     for (const [action, label] of Object.entries(actions)) {
       const n = select([0, 1, 2, 3, 4, 5, 8, 9, 10, 11].map(i => [String(i), 'Botão ' + i]), String(app.gamepad.mapping[action]));
@@ -377,4 +378,4 @@ function settingsPanel() {
   });
 }
 $('#settings-open').onclick = settingsPanel;
-import('./generation/controller.js').catch(e => notify(e.message));
+import('./generation/controller.js').then(()=>import('./voice-controller.js')).catch(e => notify(e.message));

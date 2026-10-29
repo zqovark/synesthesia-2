@@ -5,6 +5,7 @@ import { TempoClock } from './audio/clock.js';
 import { GamepadInput, DEFAULT_MAPPING } from './input/gamepad.js';
 import { Library, BUILTINS } from './storage/library.js';
 import { STATIC_PREVIEW } from './runtime.js';
+import {ImageTransport} from './core/transport.js';
 export const $ = s => document.querySelector(s),
   $$ = s => Array.from(document.querySelectorAll(s));
 const glyph = '<svg viewBox="0 0 48 48" aria-hidden="true"><ellipse cx="24" cy="24" rx="19" ry="9"/><ellipse cx="24" cy="24" rx="19" ry="9" transform="rotate(60 24 24)"/><ellipse cx="24" cy="24" rx="19" ry="9" transform="rotate(120 24 24)"/><circle cx="24" cy="24" r="3"/></svg>';
@@ -17,6 +18,7 @@ $('#app').innerHTML = `
 <div id="drawer" class="drawer" role="dialog" aria-modal="true" aria-labelledby="drawer-title" hidden><div class="drawer-top"><div><span class="eyebrow" id="drawer-kicker">INSTRUMENTO</span><h2 id="drawer-title"></h2></div><button id="drawer-close" data-pad aria-label="Fechar painel">✕ <small>B</small></button></div><div id="drawer-body"></div></div><button id="return-controls" hidden data-pad>⛶ Mostrar instrumentos</button><input id="image-file" type="file" accept="image/png,image/jpeg,image/webp" multiple hidden><input id="scene-file" type="file" accept="application/json,.json" hidden><audio id="player" hidden></audio>`;
 export const app = {
   instrument: new Instrument(),
+  transport: new ImageTransport(),
   clock: new TempoClock(),
   assets: [...BUILTINS],
   scenes: [],
@@ -25,6 +27,9 @@ export const app = {
   selectedParameter: 0,
   drawer: null
 };
+const voiceButton=document.createElement('button');voiceButton.id='voice-open';voiceButton.dataset.pad='';voiceButton.textContent='◉ Voz';voiceButton.setAttribute('aria-label','Gerar próxima imagem por voz');
+voiceButton.onclick=()=>app.voice?.toggle();$('.top-actions').insertBefore(voiceButton,$('#generate-open'));
+$('#pad-help').textContent='LS voz · LB/RB macro · LT/RT intensidade · RS efeito · A selecionar';
 $('.brand').href = './';
 if (STATIC_PREVIEW) {
   $('.brand small').textContent = 'PREVIEW ONLINE · INSTRUMENTO AUDIOVISUAL';
@@ -42,7 +47,7 @@ export const safe = fn => async (...args) => {
   }
 };
 let session;
-export async function api(path, body) {
+export async function api(path, body, options = {}) {
   if (STATIC_PREVIEW) throw new Error('Este recurso usa o serviço da versão local.');
   session ??= await fetch('/api/session').then(r => r.json());
   const r = await fetch(path, {
@@ -51,7 +56,8 @@ export async function api(path, body) {
       'Content-Type': 'application/json',
       'X-Instrument-Token': session.token
     },
-    body: JSON.stringify(body)
+    body: JSON.stringify(body),
+    signal: options.signal
   });
   const d = await r.json();
   if (!r.ok) throw new Error(d.error);
@@ -143,6 +149,7 @@ export function openDrawer(title, render, kicker = 'INSTRUMENTO') {
   $('#app').querySelectorAll('.topbar,.workspace,.library-ribbon,footer').forEach(n => n.inert = true);
 }
 export function closeDrawer() {
+  if(app.drawer==='Próxima imagem por voz'&&app.voice?.listening)app.voice.cancel();
   app.drawer = null;
   $('#drawer').hidden = true;
   $('#app').querySelectorAll('.topbar,.workspace,.library-ribbon,footer').forEach(n => n.inert = false);
@@ -183,8 +190,10 @@ export async function updateImages() {
   if (ids.some(id => !app.assets.some(a => a.id === id))) notify('Cena com imagens ausentes. Importe a cena completa.');
   await app.renderer?.setImages(ids.map(id => app.assets.find(a => a.id === id)));
   $('#layer-info').textContent = ids.length + ' CAMADAS';
+  app.decks?.libraryChanged();
 }
 export async function chooseImage(id) {
+  if(app.decks?.managed){await app.decks.queueNext(id);return;}
   const ids = app.instrument.scene.images,
     i = ids.indexOf(id);
   if (i >= 0) ids.splice(i, 1);else {
@@ -199,6 +208,7 @@ export async function addImage(blob, name, metadata = {}) {
   if (!app.db) throw new Error('Armazenamento indisponível.');
   const a = await app.db.addImage(blob, name, metadata);
   app.assets.push(a);
+  if(app.decks?.managed){await app.decks.queueNext(a.id);renderAssets();changed();return a;}
   app.instrument.scene.images = [...app.instrument.scene.images, a.id].slice(-2);
   await updateImages();
   renderAssets();
@@ -263,9 +273,11 @@ export function refresh() {
   renderParameters();
   renderAssets();
   document.body.classList.toggle('reduced-motion', app.instrument.scene.reducedMotion);
+  app.decks?.refresh();
 }
 export async function loadScene(scene) {
   app.instrument.setScene(scene);
+  app.decks?.reset();
   app.selectedMacro = 0;
   refresh();
   await updateImages();
@@ -308,6 +320,7 @@ function navigate(direction) {
   });
 }
 async function cycleImage() {
+  if(app.decks?.managed){await app.decks.next();return;}
   const ids = app.instrument.scene.images,
     i = app.assets.findIndex(a => a.id === ids.at(-1));
   ids[1] = app.assets[(i + 1) % app.assets.length].id;
@@ -320,10 +333,12 @@ function dispatch(action, value) {
   const k = app.instrument,
     macros = k.scene.macros;
   if (action === 'connection') {
+    if(!value&&app.voice?.listening)app.voice.cancel();
     $('#gamepad-state').textContent = value ? '● CONTROLE CONECTADO' : '○ CONTROLE AUSENTE';
     notify(value ? 'Controle conectado. Solte os botões e centralize os analógicos.' : 'Controle desconectado. Valores mantidos.');
     return;
   }
+  if(action==='voice'){app.voice?.toggle();return;}
   if (action === 'navigate') {
     navigate(value);
     return;
@@ -426,13 +441,16 @@ let last = performance.now(),
   beatSwap = 0;
 function tick(now) {
   if (disposed) return;
+  const elapsedSeconds=Math.max(0,(now-last)/1000);
   const dt = Math.min(.1, (now - last) / 1000);
   last = now;
   sceneTime += dt;
   app.gamepad.poll(navigator.getGamepads?.(), dt, now / 1000);
   const k = app.instrument,
     sound = app.clock.sample(app.audio.sample(now / 1000, dt), k.scene, now / 1000);
-  app.renderer?.render(k.step(sound, dt), k.scene, sceneTime, sound.beat);
+  app.decks?.step(elapsedSeconds);
+  const parameters=k.step(sound,dt);
+  app.renderer?.render(app.decks?.renderParams(parameters)??parameters, k.scene, sceneTime, sound.beat);
   count++;
   if (now - fpsTime > 1000) {
     fps = Math.round(count * 1000 / (now - fpsTime));
@@ -445,6 +463,7 @@ function tick(now) {
   }
   if (now - ui > 100) {
     ui = now;
+    app.decks?.refresh();
     $('#gpu-status').textContent = app.renderer ? fps + ' FPS · ' + app.renderer.canvas.width + ' × ' + app.renderer.canvas.height : 'GPU INDISPONÍVEL';
     const manual = k.scene.manualTempo || sound.confidence < .65;
     $('#tempo').textContent = Math.round((manual ? k.scene.bpm : sound.bpm) || 120);
@@ -482,19 +501,25 @@ await safe(async () => {
       ...DEFAULT_MAPPING,
       ...saved.mapping
     };
+    if(saved.mapping&&!('voice' in saved.mapping)){
+      const used=new Set(Object.values(saved.mapping));
+      app.gamepad.mapping.voice=[10,0,1,2,3,4,5,8,9,11].find(index=>!used.has(index))??-1;
+    }
     app.gamepad.deadzone = clamp(saved.deadzone ?? .16, .05, .4);
   } else app.instrument.scene.reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
   refresh();
   await updateImages();
 })();
 import('./panels.js').catch(e => notify(e.message));
+import('./decks.js').catch(e=>notify(e.message));
 window.addEventListener('pagehide', () => {
   disposed = true;
   cancelAnimationFrame(raf);
   clearTimeout(timer);
+  app.voice?.cancel();
   app.renderer?.dispose();
   void app.audio.dispose();
   for (const url of thumbs.values()) URL.revokeObjectURL(url);
   void saveSession().finally(() => app.db?.close());
 });
-document.addEventListener('visibilitychange', () => { if (document.hidden) void safe(saveSession)(); });
+document.addEventListener('visibilitychange', () => { if (document.hidden) {app.transport.pause();app.voice?.cancel();void safe(saveSession)();} });

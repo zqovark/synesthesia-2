@@ -8,7 +8,8 @@ export const DEFAULT_MAPPING = {
   nextMacro: 5,
   previousParameter: 8,
   nextParameter: 11,
-  performance: 9
+  performance: 9,
+  voice: 10
 };
 export const deadzone = (v, zone = .16) => Math.abs(v) <= zone ? 0 : Math.sign(v) * (Math.abs(v) - zone) / (1 - zone);
 /** Buttons are edge-triggered; relative controls require neutral after reconnect. */

@@ -10,7 +10,12 @@ let presets = structuredClone(PRESETS),
   job = null,
   jobName = 'Nova matéria',
   poll = null,
-  saving = false;
+  saving = false,
+  pending = false,
+  completion = null,
+  generationEpoch = 0,
+  destination = 'composition',
+  sourceMetadata = {};
 if (app.db) {
   const saved = await app.db.get('settings', 'generation').catch(() => null);
   if (Array.isArray(saved?.presets) && saved.presets.length) presets = saved.presets;
@@ -26,6 +31,63 @@ async function persist() {
     presets
   });
 }
+async function startGeneration(request, name, target = 'composition', metadata = {}) {
+  if (pending || saving || job?.state === 'running') throw new Error('Uma geração já está em andamento.');
+  pending = true;
+  const epoch = ++generationEpoch;
+  try {
+    jobName = name;
+    destination = target;
+    sourceMetadata = metadata;
+    job = await app.api('/api/jobs', request);
+    if (epoch !== generationEpoch) {
+      await app.api('/api/jobs/' + job.id + '/cancel', {});
+      job.state = 'cancelled';
+      throw new Error('Geração cancelada.');
+    }
+    const result = new Promise((resolve, reject) => completion = {
+      resolve,
+      reject
+    });
+    watch();
+    renderJob();
+    notify('Geração em segundo plano. O instrumento continua disponível.');
+    return await result;
+  } finally {
+    pending = false;
+  }
+}
+app.generation = {
+  get busy() {
+    return pending || saving || job?.state === 'running';
+  },
+  async generateNext(text) {
+    if (STATIC_PREVIEW) throw new Error('Geração por voz disponível na versão local.');
+    const session = await fetch('/api/session').then(r => r.json());
+    const adapter = session.providers?.find(p => p.id === provider && p.configured) ?? session.providers?.find(p => p.configured);
+    if (!adapter) throw new Error('Configure um provedor de imagens antes de usar a voz.');
+    return startGeneration({
+      ...draft,
+      prompt: text,
+      seed: randomSeed(),
+      provider: adapter.id,
+      confirmed: true
+    }, text.slice(0, 70), 'next', {
+      input: 'voice',
+      spokenPrompt: text
+    });
+  },
+  async cancel() {
+    ++generationEpoch;
+    if (job?.state === 'running') {
+      job = await app.api('/api/jobs/' + job.id + '/cancel', {});
+      clearTimeout(poll);
+      renderJob();
+      completion?.reject(new Error('Geração cancelada.'));
+      completion = null;
+    }
+  }
+};
 function panel() {
   openDrawer('Dar forma ao invisível', body => {
     body.append(help('Presets são direções artísticas editáveis. As famílias bíblicas são interpretações visuais, sem pretensão histórica ou canônica.'));
@@ -103,15 +165,11 @@ function panel() {
       if (job?.state === 'running') throw new Error('Uma geração já está em andamento.');
       generate.disabled = true;
       try {
-        jobName = draft.name;
-        job = await app.api('/api/jobs', {
+        await startGeneration({
           ...draft,
           provider,
           confirmed: true
-        });
-        watch();
-        renderJob();
-        notify('Geração em segundo plano. O instrumento continua disponível.');
+        }, draft.name);
       } finally {
         generate.disabled = false;
       }
@@ -140,9 +198,7 @@ function renderJob() {
   if (job.state === 'running') {
     box.append(el('progress'));
     box.append(button('Cancelar geração', async () => {
-      job = await app.api('/api/jobs/' + job.id + '/cancel', {});
-      clearTimeout(poll);
-      renderJob();
+      await app.generation.cancel();
     }));
   }
   if (job.state === 'completed' && job.hasImage) box.append(button('Adicionar novamente à composição', async () => {
@@ -154,28 +210,49 @@ function renderJob() {
 }
 function watch() {
   clearTimeout(poll);
-  poll = setTimeout(safe(async () => {
-    const r = await fetch('/api/jobs/' + job.id);
-    if (!r.ok) throw new Error('Geração expirada.');
-    job = await r.json();
-    renderJob();
-    if (job.state === 'running') {
-      watch();
-      return;
-    }
-    if (job.state === 'completed' && !saving) {
-      saving = true;
-      const completedJob = job, name = jobName;
-      try {
-        const r = await fetch('/api/jobs/' + completedJob.id + '/image');
-        if (!r.ok) throw new Error('Imagem indisponível.');
-        await addImage(await r.blob(), name, completedJob.metadata);
-        notify('Nova matéria gerada, salva e adicionada à composição.');
-      } finally {
-        saving = false;
+  poll = setTimeout(async () => {
+    try {
+      const r = await fetch('/api/jobs/' + job.id);
+      if (!r.ok) throw new Error('Geração expirada.');
+      job = await r.json();
+      renderJob();
+      if (job.state === 'running') {
+        watch();
+        return;
       }
-    } else if (job.error) notify(job.error);
-  }), 800);
+      if (job.state === 'completed' && !saving) {
+        saving = true;
+        const completedJob = job,
+          name = jobName;
+        try {
+          const r = await fetch('/api/jobs/' + completedJob.id + '/image');
+          if (!r.ok) throw new Error('Imagem indisponível.');
+          const blob = await r.blob(),
+            metadata = {
+              ...completedJob.metadata,
+              ...sourceMetadata
+            };
+          const asset = destination === 'next' ? await app.queueGenerated(blob, name, metadata) : await addImage(blob, name, metadata);
+          notify(destination === 'next' ? 'Imagem gerada por voz e preparada no deck B.' : 'Nova matéria gerada, salva e adicionada à composição.');
+          completion?.resolve(asset);
+          completion = null;
+        } finally {
+          saving = false;
+        }
+      } else if (job.error || job.state === 'cancelled') throw new Error(job.error ?? 'Geração cancelada.');
+    } catch (error) {
+      if (job?.state === 'running') job = {
+        ...job,
+        state: 'failed',
+        stage: 'Falha na geração',
+        error: error.message
+      };
+      renderJob();
+      completion?.reject(error);
+      completion = null;
+      notify(error.message);
+    }
+  }, 800);
 }
 $('#generate-open').onclick = panel;
 window.addEventListener('pagehide', () => clearTimeout(poll));
