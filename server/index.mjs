@@ -5,6 +5,7 @@ import path from 'node:path';
 import { randomBytes, timingSafeEqual } from 'node:crypto';
 import { Monitor } from './monitor.mjs';
 import { Jobs } from './jobs.mjs';
+import {VoiceService} from './voice.mjs';
 const root = path.resolve(fileURLToPath(new URL('../', import.meta.url)));
 export async function readJson(req, max = 16384) {
   let n = 0,
@@ -22,7 +23,8 @@ export async function readJson(req, max = 16384) {
 }
 export function createApp({
   monitor = new Monitor(),
-  jobs = null
+  jobs = null,
+  voice = new VoiceService()
 } = {}) {
   const token = randomBytes(32).toString('hex');
   const server = http.createServer(async (req, res) => {
@@ -57,8 +59,14 @@ export function createApp({
       if (url.pathname === '/api/session' && req.method === 'GET') return json({
         token,
         linux: process.platform === 'linux',
-        providers: jobs?.providers() ?? []
+        providers: jobs?.providers() ?? [],
+        voice: voice.status()
       });
+      if(url.pathname==='/api/voice/transcribe'&&req.method==='POST'){
+        const input=await readJson(req,1500000),controller=new AbortController();
+        const abort=()=>{if(!res.writableEnded)controller.abort();};res.on('close',abort);
+        try{return json(await voice.transcribe(input,controller.signal));}finally{res.off('close',abort);}
+      }
       if (url.pathname === '/api/audio/start' && req.method === 'POST') {
         await readJson(req);
         await monitor.start();
