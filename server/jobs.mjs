@@ -21,13 +21,19 @@ export class Jobs {
       name,
       model,
       configured,
-      paid
+      paid,
+      supported,
+      keyEnv,
+      setupUrl
     }) => ({
       id,
       name,
       model,
       configured,
-      paid
+      paid,
+      supported,
+      keyEnv,
+      setupUrl
     }));
   }
   expire() {
@@ -112,6 +118,16 @@ export class Jobs {
     return this.snapshot(j);
   }
   async handle(req, res, url, json) {
+    const configuration = url.pathname.match(/^\/api\/providers\/([a-z]+)$/);
+    if (configuration && req.method === 'POST') {
+      if (this.busy) throw new Error('Aguarde a geração atual antes de alterar a chave.');
+      const adapter = this.adapters.get(configuration[1]);
+      if (!adapter?.configure) throw new Error('Configuração de provedor indisponível.');
+      const input = await readJson(req, 2048);
+      adapter.configure(input.apiKey);
+      json({ providers: this.providers() });
+      return true;
+    }
     if (url.pathname === '/api/jobs' && req.method === 'POST') {
       const d = await readJson(req);
       return json(this.create(d), 202), true;

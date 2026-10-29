@@ -105,7 +105,7 @@ export function createApp({
         });
         return;
       }
-      if (jobs && url.pathname.startsWith('/api/jobs')) {
+      if (jobs && (url.pathname.startsWith('/api/jobs') || url.pathname.startsWith('/api/providers/'))) {
         if (await jobs.handle(req, res, url, json)) return;
       }
       if (url.pathname.startsWith('/api/')) return json({

@@ -1,4 +1,5 @@
 import { randomInt } from 'node:crypto';
+import { cloudProviders } from './cloud-providers.mjs';
 export function validateRequest(input) {
   if (typeof input?.prompt !== 'string' || !input.prompt.trim() || input.prompt.length > 4000) throw new Error('Prompt deve ter de 1 a 4000 caracteres.');
   const seed = input.seed === 0 || input.seed === undefined ? randomInt(1, 2147483647) : input.seed;
@@ -14,7 +15,7 @@ export function validateRequest(input) {
     cfg
   };
 }
-async function responseJson(response) {
+export async function responseJson(response) {
   if (!response.ok) {
     await response.body?.cancel();
     throw new Error(response.status === 401 || response.status === 403 ? 'Credencial ou permissão recusada pelo provedor.' : response.status === 429 ? 'Limite do provedor atingido. Tente mais tarde.' : 'Provedor retornou HTTP ' + response.status + '. Nenhuma repetição automática foi feita.');
@@ -38,7 +39,7 @@ async function responseJson(response) {
   }
   return JSON.parse(Buffer.concat(chunks).toString());
 }
-function image(base64) {
+export function image(base64) {
   if (typeof base64 !== 'string' || base64.length > 28 * 1024 * 1024) throw new Error('Provedor não retornou uma imagem válida.');
   const data = Buffer.from(base64.replace(/^data:image\/\w+;base64,/, ''), 'base64');
   let type;
@@ -49,7 +50,7 @@ function image(base64) {
   };
 }
 export function createProviders(env = process.env, fetcher = fetch) {
-  const providers = new Map();
+  const providers = cloudProviders(env, fetcher);
   providers.set('nvidia-sdxl', {
     id: 'nvidia-sdxl',
     name: 'NVIDIA · Stable Diffusion XL',
