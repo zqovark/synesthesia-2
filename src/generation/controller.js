@@ -1,5 +1,6 @@
 import { app, $, el, input, field, select, button, help, panelError, openDrawer, notify, safe, addImage } from '../app.js';
 import { PRESETS } from './presets.js';
+import { STATIC_PREVIEW } from '../runtime.js';
 let presets = structuredClone(PRESETS),
   selected = presets[0].id,
   draft = {
@@ -66,7 +67,9 @@ function panel() {
     }), field('Passos', steps), field('Orientação ao prompt', cfg));
     const adapters = el('div');
     body.append(adapters);
-    fetch('/api/session').then(r => r.json()).then(data => {
+    if (STATIC_PREVIEW) {
+      adapters.append(help('A geração de imagens por IA está disponível na versão local. Neste preview, você pode editar presets e usar imagens importadas.'));
+    } else fetch('/api/session').then(r => r.json()).then(data => {
       if (!adapters.isConnected) return;
       const providers = data.providers ?? [],
         p = select(providers.map(p => [p.id, p.name + (p.configured ? '' : ' · não configurado')]), provider);
@@ -94,7 +97,7 @@ function panel() {
     }));
     const consent = input('checkbox');
     consent.id = 'generation-consent';
-    body.append(field('Confirmo enviar este prompt ao provedor. A chamada pode consumir créditos; cancelar não garante estorno.', consent));
+    if (!STATIC_PREVIEW) body.append(field('Confirmo enviar este prompt ao provedor. A chamada pode consumir créditos; cancelar não garante estorno.', consent));
     const generate = button('Gerar uma imagem', async () => {
       if (!consent.checked) throw new Error('Marque a confirmação para enviar ao provedor.');
       if (job?.state === 'running') throw new Error('Uma geração já está em andamento.');
@@ -113,12 +116,14 @@ function panel() {
         generate.disabled = false;
       }
     }, 'gold');
+    generate.disabled = STATIC_PREVIEW;
+    if (STATIC_PREVIEW) generate.title = 'Disponível na versão local';
     body.append(generate);
     const state = el('div', 'job-state');
     state.id = 'generation-job';
     body.append(state);
     renderJob();
-    body.append(help('A seed e os parâmetros ficam junto da imagem. Repeti-los não garante resultado idêntico entre versões de modelos, provedores e hardware. Fechar este painel não interrompe a geração. Resultados no serviço expiram após dez minutos.'));
+    if (!STATIC_PREVIEW) body.append(help('A seed e os parâmetros ficam junto da imagem. Repeti-los não garante resultado idêntico entre versões de modelos, provedores e hardware. Fechar este painel não interrompe a geração. Resultados no serviço expiram após dez minutos.'));
     panelError(body);
   }, 'ATELIÊ DE MATÉRIA');
 }

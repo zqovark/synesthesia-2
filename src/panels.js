@@ -1,6 +1,7 @@
 import { app, $, el, button, input, field, select, help, panelError, openDrawer, closeDrawer, safe, notify, changed, saveSession, picture, assetCard, chooseImage, renderAssets, renderMacros, updateImages, loadScene, addImage } from './app.js';
 import { PARAMETERS, createScene, validateScene, clamp } from './core/instrument.js';
 import { sceneEnvelope, validateEnvelope } from './storage/library.js';
+import { STATIC_PREVIEW } from './runtime.js';
 const parameterOptions = () => Object.entries(PARAMETERS).map(([k, p]) => [k, p.label]);
 export function download(blob, name) {
   const url = URL.createObjectURL(blob),
@@ -190,7 +191,9 @@ $('#bindings-open').onclick = () => openDrawer('O som transforma a matéria', bo
   panelError(body);
 });
 $('#audio-open').onclick = () => openDrawer('Escutar o movimento', body => {
-  body.append(help('Arquivos são reproduzidos e analisados no navegador. No Linux, “Computador” lê o monitor da saída via pipewire-pulse/parec, sem microfone e sem duplicar o som.'));
+  body.append(help(STATIC_PREVIEW
+    ? 'Abra um arquivo de áudio para reproduzir e sincronizar a composição. A captura do áudio do computador está disponível na versão local.'
+    : 'Arquivos são reproduzidos e analisados no navegador. No Linux, “Computador” lê o monitor da saída via pipewire-pulse/parec, sem microfone e sem duplicar o som.'));
   const file = input('file');
   file.accept = 'audio/*';
   file.onchange = safe(async () => {
@@ -199,10 +202,13 @@ $('#audio-open').onclick = () => openDrawer('Escutar o movimento', body => {
       closeDrawer();
     }
   });
-  body.append(field('Arquivo de áudio', file), button('Computador · monitor de saída', async () => {
+  const systemButton = button('Computador · monitor de saída', async () => {
     await app.audio.system();
     closeDrawer();
-  }, 'gold'), button('Parar áudio', () => app.audio.stop()));
+  }, 'gold');
+  systemButton.disabled = STATIC_PREVIEW;
+  if (STATIC_PREVIEW) systemButton.title = 'Disponível na versão local';
+  body.append(field('Arquivo de áudio', file), systemButton, button('Parar áudio', () => app.audio.stop()));
   const player = $('#player');
   body.append(button(player.paused ? 'Reproduzir arquivo' : 'Pausar arquivo', async () => {
     if (app.audio.kind !== 'file') throw new Error('Escolha um arquivo primeiro.');

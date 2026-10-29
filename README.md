@@ -2,6 +2,8 @@
 
 Instrumento audiovisual em tempo real para compor imagens, efeitos e modulações sincronizadas ao áudio. Inclui macros editáveis, cenas, biblioteca local, controle por gamepad e geração de imagens por IA.
 
+[Abrir preview](https://zqovark.github.io/synesthesia-2/)
+
 ## Executar
 
 Requer Node.js 22+ e navegador com WebGL 2.

@@ -4,6 +4,7 @@ import { AudioEngine } from './audio/audio.js';
 import { TempoClock } from './audio/clock.js';
 import { GamepadInput, DEFAULT_MAPPING } from './input/gamepad.js';
 import { Library, BUILTINS } from './storage/library.js';
+import { STATIC_PREVIEW } from './runtime.js';
 export const $ = s => document.querySelector(s),
   $$ = s => Array.from(document.querySelectorAll(s));
 const glyph = '<svg viewBox="0 0 48 48" aria-hidden="true"><ellipse cx="24" cy="24" rx="19" ry="9"/><ellipse cx="24" cy="24" rx="19" ry="9" transform="rotate(60 24 24)"/><ellipse cx="24" cy="24" rx="19" ry="9" transform="rotate(120 24 24)"/><circle cx="24" cy="24" r="3"/></svg>';
@@ -24,6 +25,11 @@ export const app = {
   selectedParameter: 0,
   drawer: null
 };
+$('.brand').href = './';
+if (STATIC_PREVIEW) {
+  $('.brand small').textContent = 'PREVIEW ONLINE · INSTRUMENTO AUDIOVISUAL';
+  $('#status').textContent = 'Preview online · abra um arquivo de áudio ou importe imagens';
+}
 export function notify(text) {
   $('#status').textContent = text;
 }
@@ -37,6 +43,7 @@ export const safe = fn => async (...args) => {
 };
 let session;
 export async function api(path, body) {
+  if (STATIC_PREVIEW) throw new Error('Este recurso usa o serviço da versão local.');
   session ??= await fetch('/api/session').then(r => r.json());
   const r = await fetch(path, {
     method: 'POST',
