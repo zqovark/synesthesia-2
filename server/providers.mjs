@@ -53,7 +53,7 @@ export function createProviders(env = process.env, fetcher = fetch) {
   const providers = cloudProviders(env, fetcher);
   providers.set('nvidia-sdxl', {
     id: 'nvidia-sdxl',
-    name: 'NVIDIA · Stable Diffusion XL',
+    name: 'NVIDIA · Stable Diffusion XL · legado',
     model: 'stabilityai/stable-diffusion-xl',
     configured: Boolean(env.NVIDIA_API_KEY),
     paid: true,

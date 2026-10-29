@@ -31,9 +31,9 @@ const controls = (...names) => Object.fromEntries(['seed', 'negative', 'steps', 
 export function cloudProviders(env, fetcher) {
   env = { ...env };
   const providers = new Map();
-  function add({ id, name, model, keyEnv, setupUrl, supported, generate }) {
+  function add({ id, name, model, keyEnv, setupUrl, supported, note, limits, paid = true, generate }) {
     const adapter = {
-      id, name, model, keyEnv, setupUrl, supported, configured: !!env[keyEnv], paid: true,
+      id, name, model, keyEnv, setupUrl, supported, note, limits, configured: !!env[keyEnv], paid,
       configure(apiKey) {
         if (typeof apiKey !== 'string' || apiKey.length > 512 || /[\r\n]/.test(apiKey)) throw new Error('Chave de API inválida.');
         env[keyEnv] = apiKey.trim();
@@ -54,6 +54,18 @@ export function cloudProviders(env, fetcher) {
       headers: { 'Content-Type': 'application/json', ...headers }, body: JSON.stringify(payload)
     }));
   }
+  add({
+    id: 'nvidia-cosmos', name: 'NVIDIA · Cosmos3 Nano · Free Endpoint', model: 'nvidia/cosmos3-nano',
+    keyEnv: 'NVIDIA_API_KEY', setupUrl: 'https://build.nvidia.com/nvidia/cosmos3-nano',
+    supported: controls('seed', 'negative', 'steps', 'cfg'), limits: { cfgMax: 7 }, paid: false,
+    note: 'Preview gratuito da NVIDIA para desenvolvimento. Requer chave; sujeito a limites, filas e disponibilidade.',
+    async generate(p, signal, model, key) {
+      if (p.cfg > 7) throw new Error('Cosmos3 Nano aceita orientação ao prompt entre 1 e 7.');
+      const payload = { model_mode: 'text2image', prompt: p.prompt, negative_prompt: p.negative, resolution: '720_16_9', num_frames: 1, num_inference_steps: p.steps, guidance_scale: p.cfg, seed: p.seed };
+      const r = await post('https://ai.api.nvidia.com/v1/cosmos/nvidia/cosmos3-nano', { Authorization: 'Bearer ' + key, Accept: 'application/json' }, payload, signal);
+      return { ...image(r.b64_image), actualSeed: p.seed, parameters: payload };
+    }
+  });
   add({
     id: 'openai', name: 'OpenAI · GPT Image', model: env.OPENAI_IMAGE_MODEL || 'gpt-image-2.5-flare',
     keyEnv: 'OPENAI_API_KEY', setupUrl: 'https://platform.openai.com/api-keys', supported: controls(),

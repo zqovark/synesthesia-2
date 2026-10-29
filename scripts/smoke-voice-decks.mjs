@@ -2,6 +2,7 @@ import { chromium } from 'playwright';
 import { spawn } from 'node:child_process';
 import { mkdir } from 'node:fs/promises';
 import assert from 'node:assert/strict';
+import { createProviders } from '../server/providers.mjs';
 const port = 4321,
   base = 'http://127.0.0.1:' + port;
 const server = spawn(process.execPath, ['server/index.mjs'], {
@@ -16,6 +17,8 @@ const errors = [];
 let transcriptions = 0,
   generations = 0;
 const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jH1kAAAAASUVORK5CYII=', 'base64');
+const adapters = createProviders({ OPENAI_API_KEY: 'configured-for-test' });
+const providerList = () => [...adapters.values()].map(({ id, name, model, configured, paid, supported, keyEnv, setupUrl }) => ({ id, name, model, configured, paid, supported, keyEnv, setupUrl }));
 try {
   for (let i = 0; i < 100; i++) {
     try {
@@ -46,14 +49,14 @@ try {
       voice: {
         configured: true
       },
-      providers: [{
-        id: 'nvidia-sdxl',
-        name: 'NVIDIA test',
-        configured: true,
-        paid: true
-      }]
+      providers: providerList()
     }
   }));
+  await page.route('**/api/providers/fal', route => {
+    assert.equal(route.request().postDataJSON().apiKey, 'session-test-key');
+    adapters.get('fal').configure('session-test-key');
+    return route.fulfill({ json: { providers: providerList() } });
+  });
   await page.route('**/api/voice/transcribe', route => {
     const body = route.request().postDataJSON();
     assert.ok(body.confirmed && body.audio.length > 1000);
@@ -67,6 +70,7 @@ try {
   await page.route('**/api/jobs', route => {
     generations++;
     assert.ok(route.request().postDataJSON().confirmed);
+    assert.equal(route.request().postDataJSON().provider, 'fal');
     return route.fulfill({
       status: 202,
       json: {
@@ -83,7 +87,7 @@ try {
       stage: 'Imagem pronta',
       hasImage: true,
       metadata: {
-        provider: 'nvidia-sdxl',
+        provider: 'fal',
         model: 'simulated',
         prompt: 'voice test',
         seed: 42
@@ -98,7 +102,25 @@ try {
   await page.evaluate(async()=>window.__app=(await import('/src/app.js')).app);
   await page.waitForFunction(()=>!!window.__app.voice&&!!window.__app.decks);
   assert.equal(await page.locator('#image-play').count(), 1);
+  await page.locator('#generate-open').click();
+  await page.locator('#image-provider').waitFor();
+  assert.equal(await page.locator('#image-provider option').count(), 7);
+  assert.equal(await page.getByLabel('Seed', { exact: true }).isDisabled(), true);
+  await page.locator('#image-provider').selectOption('fal');
+  assert.equal(await page.getByLabel('Seed', { exact: true }).isDisabled(), false);
+  await page.locator('#provider-api-key').fill('session-test-key');
+  await page.getByRole('button', { name: 'Usar chave nesta sessão', exact: true }).click();
+  await page.waitForFunction(() => document.querySelector('#status').textContent.includes('Chave configurada'));
+  assert.equal(await page.locator('#provider-api-key').inputValue(), '');
+  // Selection survives a reload; the secret must never reach IndexedDB.
+  await page.reload();
+  await page.evaluate(async()=>window.__app=(await import('/src/app.js')).app);
+  await page.waitForFunction(()=>!!window.__app.voice&&!!window.__app.decks);
+  const settings = await page.evaluate(async () => (await window.__app.db.list('settings')));
+  assert.ok(!JSON.stringify(settings).includes('session-test-key'));
   await page.locator('#voice-open').click();
+  await page.locator('#image-provider').waitFor();
+  assert.equal(await page.locator('#image-provider').inputValue(), 'fal');
   await page.locator('#voice-enabled').check();
   await page.locator('#voice-record').click();
   await page.waitForFunction(() => document.querySelector('#voice-phase').textContent.startsWith('Gravando'));
@@ -182,7 +204,6 @@ try {
   assert.deepEqual(errors, []);
   console.log('Voice/decks passed: real MediaRecorder with synthetic microphone, mocked ASR/image APIs, next cue, timed playback, LS and disconnect cancellation.');
 } catch (error) {
-  if(page)console.error('Diagnostic:',await page.evaluate(async()=>{const {app}=await import('/src/app.js');return {mapping:app.gamepad.mapping,voice:app.voice.status,busy:app.generation.busy,pad:window.__pad,previous:app.gamepad.previous,neutral:app.gamepad.neutral};}).catch(()=>null));
   if (page) {
     console.error('Voice/decks:', await page.locator('#status').textContent().catch(() => '?'));
     await mkdir('test-results', {

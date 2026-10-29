@@ -39,6 +39,8 @@ function render() {
     control.textContent = capture.listening ? '■ Finalizar e gerar' : '◉ Falar e gerar próxima';
     control.disabled = STATIC_PREVIEW || !enabled || ['transcribing', 'generating'].includes(phase);
   }
+  const provider = $('#image-provider');
+  if (provider) provider.disabled = capture.listening || ['transcribing', 'generating'].includes(phase);
 }
 function fail(error) {
   if (error.name === 'AbortError') return;
@@ -134,6 +136,9 @@ function panel() {
       await persist();
     });
     body.append(field('Reconhecimento de fala · português', choice));
+    const providers = el('div');
+    body.append(providers);
+    void app.generation.providerControls(providers).then(render).catch(e => notify(e.message));
     body.append(help('O microfone só é aberto ao iniciar um pedido. A gravação termina em até 20 segundos e não é salva. O reconhecimento do navegador pode enviar áudio ao serviço de voz do navegador.'));
     const state = el('div', 'voice-state');
     state.id = 'voice-phase';
@@ -186,7 +191,6 @@ async function toggle() {
   }
 }
 app.voice = {
-  get status(){return {enabled,mode,phase,listening:capture.listening};},
   toggle: () => void safe(toggle)(),
   cancel,
   panel,

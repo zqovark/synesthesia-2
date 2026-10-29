@@ -129,3 +129,39 @@ test('session key configuration requires authentication and never exposes or per
     await new Promise(r => server.close(r));
   }
 });
+test('NVIDIA Free Endpoint generates a JPEG with the Cosmos text2image contract', async () => {
+  let request;
+  // The provider returns original JPEG bytes, without converting or stripping provenance.
+  const jpeg = Buffer.from([255, 216, 255, 224, 0, 16, 74, 70, 73, 70, 255, 217]);
+  const adapter = createProviders({ NVIDIA_API_KEY: 'nvidia-test-secret' }, async (url, options) => {
+    request = { url, options, body: JSON.parse(options.body) };
+    return json({ b64_image: jpeg.toString('base64') });
+  }).get('nvidia-cosmos');
+  assert.equal(adapter.paid, false);
+  assert.equal(adapter.configured, true);
+  const result = await adapter.generate(parameters);
+  assert.equal(request.url, 'https://ai.api.nvidia.com/v1/cosmos/nvidia/cosmos3-nano');
+  assert.equal(request.options.headers.Authorization, 'Bearer nvidia-test-secret');
+  assert.equal(request.body.model_mode, 'text2image');
+  assert.equal(request.body.num_frames, 1);
+  assert.equal(request.body.resolution, '720_16_9');
+  assert.equal(request.body.num_inference_steps, 30);
+  assert.equal(request.body.guidance_scale, 4);
+  assert.equal(request.body.seed, 42);
+  assert.deepEqual(result.data, jpeg);
+  assert.equal(result.type, 'image/jpeg');
+  assert.ok(!JSON.stringify(result).includes('nvidia-test-secret'));
+  await assert.rejects(adapter.generate({ ...parameters, cfg: 9 }), /entre 1 e 7/);
+  adapter.configure('');
+  await assert.rejects(adapter.generate(parameters), /NVIDIA_API_KEY/);
+});
+test('NVIDIA Free Endpoint handles rate limiting and filtered responses without retrying', async () => {
+  for (const status of [401, 422, 429]) {
+    let calls = 0;
+    const adapter = createProviders({ NVIDIA_API_KEY: 'secret' }, async () => { calls++; return new Response('secret', { status }); }).get('nvidia-cosmos');
+    await assert.rejects(adapter.generate(parameters), e => !e.message.includes('secret'));
+    assert.equal(calls, 1);
+  }
+  const adapter = createProviders({ NVIDIA_API_KEY: 'secret' }, async () => json({ b64_video: 'video-instead-of-image' })).get('nvidia-cosmos');
+  await assert.rejects(adapter.generate(parameters), /imagem válida/);
+});

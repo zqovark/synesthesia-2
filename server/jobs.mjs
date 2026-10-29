@@ -24,7 +24,9 @@ export class Jobs {
       paid,
       supported,
       keyEnv,
-      setupUrl
+      setupUrl,
+      note,
+      limits
     }) => ({
       id,
       name,
@@ -33,7 +35,9 @@ export class Jobs {
       paid,
       supported,
       keyEnv,
-      setupUrl
+      setupUrl,
+      note,
+      limits
     }));
   }
   expire() {
@@ -118,7 +122,7 @@ export class Jobs {
     return this.snapshot(j);
   }
   async handle(req, res, url, json) {
-    const configuration = url.pathname.match(/^\/api\/providers\/([a-z]+)$/);
+    const configuration = url.pathname.match(/^\/api\/providers\/([a-z0-9-]+)$/);
     if (configuration && req.method === 'POST') {
       if (this.busy) throw new Error('Aguarde a geração atual antes de alterar a chave.');
       const adapter = this.adapters.get(configuration[1]);
