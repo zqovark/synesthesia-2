@@ -150,6 +150,7 @@ test('NVIDIA Free Endpoint generates a JPEG with the Cosmos text2image contract'
   assert.equal(request.body.seed, 42);
   assert.deepEqual(result.data, jpeg);
   assert.equal(result.type, 'image/jpeg');
+  assert.equal(result.actualSeed, null, 'requested seed is recorded separately from a seed confirmed by the provider');
   assert.ok(!JSON.stringify(result).includes('nvidia-test-secret'));
   await assert.rejects(adapter.generate({ ...parameters, cfg: 9 }), /entre 1 e 7/);
   adapter.configure('');
@@ -165,3 +166,4 @@ test('NVIDIA Free Endpoint handles rate limiting and filtered responses without 
   const adapter = createProviders({ NVIDIA_API_KEY: 'secret' }, async () => json({ b64_video: 'video-instead-of-image' })).get('nvidia-cosmos');
   await assert.rejects(adapter.generate(parameters), /imagem válida/);
 });
+

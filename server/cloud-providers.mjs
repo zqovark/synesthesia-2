@@ -63,7 +63,7 @@ export function cloudProviders(env, fetcher) {
       if (p.cfg > 7) throw new Error('Cosmos3 Nano aceita orientação ao prompt entre 1 e 7.');
       const payload = { model_mode: 'text2image', prompt: p.prompt, negative_prompt: p.negative, resolution: '720_16_9', num_frames: 1, num_inference_steps: p.steps, guidance_scale: p.cfg, seed: p.seed };
       const r = await post('https://ai.api.nvidia.com/v1/cosmos/nvidia/cosmos3-nano', { Authorization: 'Bearer ' + key, Accept: 'application/json' }, payload, signal);
-      return { ...image(r.b64_image), actualSeed: p.seed, parameters: payload };
+      return { ...image(r.b64_image), actualSeed: Number.isSafeInteger(r.seed) ? r.seed : null, parameters: payload };
     }
   });
   add({
@@ -138,3 +138,4 @@ export function cloudProviders(env, fetcher) {
   });
   return providers;
 }
+
