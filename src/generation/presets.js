@@ -1,0 +1,13 @@
+export const PRESETS=[
+  ['firmamento','Criação e firmamento','Luz sobre as águas','Vast primordial waters beneath an impossible cosmic firmament, first golden light emerging from obsidian darkness, monumental scale, deep indigo, volumetric light, contemplative, immersive environment, no text',104729],
+  ['rodas','Visões celestiais','Rodas entrelaçadas','Concentric interlocking celestial wheels, layered feather-like structures and luminous fields, inspired by prophetic imagery, abstract artistic interpretation, aged gold and indigo, cosmic depth, no text',271828],
+  ['presenca','Fogo e presença','Coluna no deserto','A monumental column of ember and luminous cloud above a silent desert, sacred sublime atmosphere, immense scale, dark purple sky, delicate glowing particles, no text',161803],
+  ['porticos','Arquitetura sagrada','Pórticos de cristal','Impossible monumental sacred portals made of translucent crystal, aged gold and dark stone, luminous city beyond, infinite perspective, serene contemplative architecture, no text',314159],
+  ['aguas','Motivos bíblicos abstratos','Ouro, água e pedra','Abstract flowing structures of water, weathered gold, crystal and black stone, continuous organic geometry, rich material detail for displacement and texture blending, no text',57721],
+  ['nebulosa','Espaço','Oceano de estrelas','Immersive nebula fields with immense spatial depth, dark interstellar dust and subtle amber stars, indigo cosmic ocean, cinematic, no text',424242],
+  ['arquitetura','Outras realidades','A cidade que respira','Impossible architecture suspended in another reality, vast structures folding into themselves, alien perspective, soft purple and ivory light, immersive, no text',65537],
+  ['alien','Paisagens surreais','Mar de outro mundo','Surreal alien landscape, liquid mountains beneath two distant moons, monumental scale, deep blue and copper atmosphere, impossible horizon, no text',99991],
+  ['organico','Orgânico e biomecânico','Jardim de matéria','Abstract organic biomechanical structures, intricate membranes and flowing metallic veins, dark emerald and aged gold, immersive macro environment, no text',123457],
+  ['geometria','Geometrias','Travessia infinita','Infinite tunnel of interwoven geometric symmetry, concentric tessellations, architectural depth, indigo and ivory on obsidian, subtle amber glow, no text',786433],
+  ['textura','Texturas','Pedra luminosa','Seamless abstract texture of dark stone, crystalline veins, flowing amber light and fine engraved lines, even detail, no focal subject, suited for displacement mapping and blending, no text',524287],
+].map(([id,category,name,prompt,seed])=>({id,category,name,prompt,seed,negative:'text, watermark, logo, oversaturated, harsh strobe',steps:25,cfg:5}));

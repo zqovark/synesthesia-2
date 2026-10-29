@@ -4,8 +4,9 @@ import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import { randomBytes, timingSafeEqual } from 'node:crypto';
 import { Monitor } from './monitor.mjs';
+import { Jobs } from './jobs.mjs';
 
-const root=fileURLToPath(new URL('../',import.meta.url));
+const root=path.resolve(fileURLToPath(new URL('../',import.meta.url)));
 export async function readJson(req,max=16384){let n=0,chunks=[];for await(const chunk of req){n+=chunk.length;if(n>max)throw new Error('Pedido excede o limite permitido.');chunks.push(chunk);}try{return JSON.parse(Buffer.concat(chunks).toString());}catch{throw new Error('JSON inválido.');}}
 export function createApp({monitor=new Monitor(),jobs=null}={}){
   const token=randomBytes(32).toString('hex');
@@ -44,6 +45,6 @@ export function createApp({monitor=new Monitor(),jobs=null}={}){
   server.on('close',()=>{monitor.stop();jobs?.dispose();});return server;
 }
 if(process.argv[1]===fileURLToPath(import.meta.url)){
-  const server=createApp();const port=Number(process.env.PORT??4310);server.listen(port,'127.0.0.1',()=>console.log('Synesthesia 2 · http://127.0.0.1:'+server.address().port));
+  const server=createApp({jobs:new Jobs()});const port=Number(process.env.PORT??4310);server.listen(port,'127.0.0.1',()=>console.log('Synesthesia 2 · http://127.0.0.1:'+server.address().port));
   for(const signal of ['SIGINT','SIGTERM'])process.on(signal,()=>{server.closeAllConnections();server.close(()=>process.exit(0));});
 }
