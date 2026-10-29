@@ -141,6 +141,7 @@ try {
     }))
   });
   await page.waitForFunction(async () => (await import('/src/app.js')).app.gamepad.neutral);
+  console.log('Before LS:',await page.evaluate(async()=>{const {app}=await import('/src/app.js');return {mapping:app.gamepad.mapping,voice:app.voice.status,busy:app.generation.busy,buttons:window.__pad.buttons.map(b=>b.value)};}));
   await page.evaluate(() => window.__pad.buttons[10].value = 1);
   await page.waitForFunction(() => document.querySelector('#voice-phase')?.textContent.startsWith('Gravando'));
   await page.evaluate(() => window.__pad.buttons[10].value = 0);
@@ -186,6 +187,7 @@ try {
   assert.deepEqual(errors, []);
   console.log('Voice/decks passed: real MediaRecorder with synthetic microphone, mocked ASR/image APIs, next cue, timed playback, LS and disconnect cancellation.');
 } catch (error) {
+  if(page)console.error('Diagnostic:',await page.evaluate(async()=>{const {app}=await import('/src/app.js');return {mapping:app.gamepad.mapping,voice:app.voice.status,busy:app.generation.busy,pad:window.__pad,previous:app.gamepad.previous,neutral:app.gamepad.neutral};}).catch(()=>null));
   if (page) {
     console.error('Voice/decks:', await page.locator('#status').textContent().catch(() => '?'));
     await mkdir('test-results', {

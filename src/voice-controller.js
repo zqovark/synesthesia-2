@@ -186,6 +186,7 @@ async function toggle() {
   }
 }
 app.voice = {
+  get status(){return {enabled,mode,phase,listening:capture.listening};},
   toggle: () => void safe(toggle)(),
   cancel,
   panel,
