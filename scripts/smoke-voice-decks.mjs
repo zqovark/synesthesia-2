@@ -162,12 +162,13 @@ try {
   await page.evaluate(() => window.__pad.buttons[10].value = 1);
   await page.waitForFunction(() => document.querySelector('#voice-phase')?.textContent.startsWith('Gravando'));
   await page.evaluate(() => window.__pad.buttons[10].value = 0);
+  await page.waitForFunction(() => window.__app.gamepad.previous[10] === 0);
   await page.waitForTimeout(700);
   await page.evaluate(() => window.__pad.buttons[10].value = 1);
   await page.waitForFunction(() => document.querySelector('#voice-phase').textContent === 'Imagem pronta no deck B');
   assert.equal(generations, 2);
   await page.evaluate(() => window.__pad.buttons[10].value = 0);
-  await page.waitForTimeout(200);
+  await page.waitForFunction(() => window.__app.gamepad.previous[10] === 0);
   await page.evaluate(() => window.__pad.buttons[10].value = 1);
   await page.waitForFunction(() => document.querySelector('#voice-phase').textContent.startsWith('Gravando'));
   await page.evaluate(() => window.__pad = null);
