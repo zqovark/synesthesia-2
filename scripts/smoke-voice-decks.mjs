@@ -173,6 +173,21 @@ try {
   await page.evaluate(() => window.__pad = null);
   await page.waitForFunction(() => document.querySelector('#voice-phase').textContent === 'Pedido cancelado');
   assert.equal(generations, 2);
+  // Cancel while provider discovery is pending: a late response must not send a paid request.
+  let holdSession;
+  const sessionHeld = new Promise(resolve => holdSession = resolve);
+  const hold = route => holdSession(route);
+  await page.route('**/api/session', hold);
+  await page.evaluate(() => {
+    window.__cancelledResult = null;
+    window.__app.generation.generateNext('Pedido cancelado antes do envio').catch(e => window.__cancelledResult = e.message);
+  });
+  const delayedSession = await sessionHeld;
+  await page.evaluate(() => window.__app.generation.cancel());
+  await delayedSession.fulfill({ json: { providers: providerList() } });
+  await page.waitForFunction(() => window.__cancelledResult === 'Geração cancelada.');
+  assert.equal(generations, 2);
+  await page.unroute('**/api/session', hold);
   await page.locator('#drawer-close').click();
   await page.locator('#image-free').click();
   await page.evaluate(async () => {

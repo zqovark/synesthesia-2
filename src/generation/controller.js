@@ -38,6 +38,8 @@ async function providers() {
   if (!r.ok) throw new Error('Não foi possível consultar os provedores.');
   const list = (await r.json()).providers ?? [];
   if (!list.some(p => p.id === provider)) provider = (list.find(p => p.configured && p.paid === false) ?? list.find(p => p.configured) ?? list[0])?.id ?? '';
+  const limit = list.find(p => p.id === provider)?.limits?.cfgMax;
+  if (limit && draft.cfg > limit) draft.cfg = limit;
   return list;
 }
 async function providerControls(container, onChange = () => {}) {
@@ -129,7 +131,9 @@ app.generation = {
   },
   async generateNext(text) {
     if (STATIC_PREVIEW) throw new Error('Geração por voz disponível na versão local.');
+    const epoch = generationEpoch;
     const list = await providers();
+    if (epoch !== generationEpoch) throw new Error('Geração cancelada.');
     const adapter = list.find(p => p.id === provider && p.configured);
     if (!adapter) throw new Error('Configure a chave do provedor selecionado antes de usar a voz.');
     return startGeneration({
