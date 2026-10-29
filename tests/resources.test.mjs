@@ -2,6 +2,10 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { Renderer } from '../src/visuals/renderer.js';
 import { TempoClock } from '../src/audio/clock.js';
+test('procedural selections retain their identity without allocating a texture',async()=>{
+  assert.equal(await Renderer.prototype.load.call({}, {id:'builtin-1'}),'builtin-1');
+  assert.equal(await Renderer.prototype.load.call({}, null),null);
+});
 test('manual tempo actually drives beats at 120 BPM and can return to audio', () => {
   const c = new TempoClock(),
     scene = {

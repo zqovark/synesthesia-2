@@ -177,6 +177,14 @@ try {
   }).click();
   await page.waitForFunction(() => document.querySelector('#asset-count').textContent.startsWith('04'));
   await page.locator('#drawer-close').click();
+  // Capture the local art direction after completing functional assertions.
+  await page.evaluate(async () => {
+    const {app,refresh,updateImages}=await import('/src/app.js');
+    const {createScene}=await import('/src/core/instrument.js');
+    app.instrument.setScene(createScene()); refresh(); await updateImages();
+    app.renderer.changed=performance.now()-1000;
+  });
+  await page.waitForTimeout(800);
   await mkdir('test-results', {
     recursive: true
   });

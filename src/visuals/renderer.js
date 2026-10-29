@@ -60,14 +60,15 @@ export class Renderer {
     const at = gl.getAttribLocation(this.program, 'position');
     gl.enableVertexAttribArray(at);
     gl.vertexAttribPointer(at, 2, gl.FLOAT, false, 0, 0);
-    this.uniforms = Object.fromEntries(['resolution', 'time', 'blend', 'displacement', 'spiral', 'rings', 'tunnel', 'symmetry', 'zoom', 'brightness', 'luminance', 'pulse', 'transition', 'present', 'texA', 'texB', 'oldA', 'oldB'].map(k => [k, gl.getUniformLocation(this.program, k)]));
+    this.uniforms = Object.fromEntries(['resolution', 'time', 'blend', 'displacement', 'spiral', 'rings', 'tunnel', 'symmetry', 'zoom', 'brightness', 'luminance', 'pulse', 'transition', 'present', 'layerActive', 'variants', 'texA', 'texB', 'oldA', 'oldB'].map(k => [k, gl.getUniformLocation(this.program, k)]));
     this.fallback = gl.createTexture();
     gl.bindTexture(gl.TEXTURE_2D, this.fallback);
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([0, 0, 0, 255]));
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
   }
   async load(asset) {
-    if (!asset || asset.id.startsWith('builtin-')) return null;
+    if (!asset) return null;
+    if (asset.id.startsWith('builtin-')) return asset.id;
     if (this.cache.has(asset.id)) return asset.id;
     const url = URL.createObjectURL(asset.blob),
       img = new Image();
@@ -140,6 +141,8 @@ export class Renderer {
     gl.uniform1f(this.uniforms.transition, t * t * (3 - 2 * t));
     const ids = [...this.current, ...this.previous];
     gl.uniform4f(this.uniforms.present, ...ids.map(id => id && this.cache.has(id) ? 1 : 0));
+    gl.uniform4f(this.uniforms.layerActive, ...ids.map(id => id ? 1 : 0));
+    gl.uniform4f(this.uniforms.variants, ...ids.map(id => id === 'builtin-1' ? 1 : 0));
     ['texA', 'texB', 'oldA', 'oldB'].forEach((key, i) => {
       gl.activeTexture(gl.TEXTURE0 + i);
       gl.bindTexture(gl.TEXTURE_2D, this.cache.get(ids[i]) ?? this.fallback);

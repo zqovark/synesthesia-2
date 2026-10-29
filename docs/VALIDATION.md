@@ -4,15 +4,15 @@
 
 ## Executado no ambiente de desenvolvimento
 
-- 14 testes Node: arbitragem aditiva e limites; retorno ao baseline; troca de cena; entradas inválidas; inversão de macros; FFT com sinais sintéticos; detector de batidas; zona morta; botões mantidos e reconexão; contrato NVIDIA com HTTP simulado; erros de provedor; consentimento; concorrência, cancelamento e timeout de jobs; isolamento HTTP/origem/token; relógio manual; descarte de texturas em carregamentos concorrentes e após destruição.
+- 15 testes Node: arbitragem aditiva e limites; retorno ao baseline; troca de cena; entradas inválidas; inversão de macros; FFT com sinais sintéticos; detector de batidas; zona morta; botões mantidos e reconexão; contrato NVIDIA com HTTP simulado; erros de provedor; consentimento; concorrência, cancelamento e timeout de jobs; isolamento HTTP/origem/token; relógio manual; identidade das matérias procedurais; descarte de texturas em carregamentos concorrentes e após destruição.
 - `npm run check`: todos os módulos JavaScript analisados pelo Node.
 - `python scripts/check-gpu.py`: shaders reais compilados e vinculados; frame renderizado com OpenGL ES 3.2 / Mesa 25.2.8; saída não vazia/opaca; zoom e simetria alteraram pixels; nenhum erro OpenGL. É integração gráfica real por Mesa, sem navegador. Não mede desempenho na RTX 3050.
 
 ## Navegador
 
-O ambiente local não contém navegador e o download do Chromium retornou arquivo inválido. Não houve inspeção visual nem medição de FPS no navegador local. `scripts/smoke-browser.mjs` e o workflow estão preparados para executar, no Chromium, a interface real: boot WebGL, macro nova, cena salva/recarregada, upload e persistência de imagem, decodificação de WAV e análise Web Audio, gamepad Xbox simulado, confirmação e geração HTTP simulada, capturas desktop/mobile e overflow horizontal.
+O ambiente local não contém navegador e o download do Chromium retornou arquivo inválido. A validação foi executada no Chromium do GitHub Actions: [execução aprovada](https://github.com/zqovark/synesthesia-2/actions/runs/40931913149), incluindo Node 22 e 24. O teste percorreu boot WebGL, macro nova, cena salva/recarregada com valor fracionário, upload e persistência de imagem, decodificação de WAV e análise Web Audio, gamepad Xbox simulado, confirmação e geração HTTP simulada, capturas desktop/mobile e overflow horizontal. As duas capturas foram abertas e inspecionadas: controles legíveis, palco central, composição responsiva e sem overflow horizontal. As validações posteriores a essa execução ficam registradas na aba Actions.
 
-As capturas do CI são evidências para revisão visual; o teste de overflow sozinho não garante qualidade visual. O estado efetivo de cada execução está na aba Actions do repositório.
+As capturas do CI são evidências para revisão visual; o teste de overflow sozinho não garante qualidade visual. Não houve medição de FPS no hardware do usuário. O estado efetivo de cada execução está na aba Actions do repositório.
 
 ## Pendente em hardware / serviços reais
 

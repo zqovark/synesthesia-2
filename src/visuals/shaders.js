@@ -8,7 +8,7 @@ in vec2 uv;out vec4 color;
 uniform vec2 resolution;
 uniform float time,blend,displacement,spiral,rings,tunnel,symmetry,zoom,brightness,luminance,pulse,transition;
 uniform sampler2D texA,texB,oldA,oldB;
-uniform vec4 present;
+uniform vec4 present,layerActive,variants;
 float hash(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
 float noise(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);return mix(mix(hash(i),hash(i+vec2(1,0)),f.x),mix(hash(i+vec2(0,1)),hash(i+vec2(1)),f.x),f.y);}
 float fbm(vec2 p){float v=0.,a=.5;for(int i=0;i<5;i++){v+=a*noise(p);p=mat2(1.6,1.2,-1.2,1.6)*p;a*=.5;}return v;}
@@ -24,9 +24,13 @@ vec3 cosmos(vec2 p,float variant){
   return c;
 }
 vec2 mirrorUV(vec2 p){return 1.-abs(mod(p,2.)-1.);}
-vec3 pairColor(sampler2D a,sampler2D b,vec2 p,vec2 flags){
-  vec3 ca=flags.x>.5?texture(a,mirrorUV(p)).rgb:cosmos(p,0.);
-  vec3 cb=flags.y>.5?texture(b,mirrorUV(p)).rgb:cosmos(p.yx,2.);
+vec3 procedural(vec2 p,float variant){return variant>.5?cosmos(p.yx,2.):cosmos(p,0.);}
+vec3 pairColor(sampler2D a,sampler2D b,vec2 p,vec2 flags,vec2 enabled,vec2 variant){
+  if(enabled.x<.5&&enabled.y<.5)return cosmos(p,0.);
+  vec3 ca=flags.x>.5?texture(a,mirrorUV(p)).rgb:procedural(p,variant.x);
+  if(enabled.y<.5)return ca;
+  vec3 cb=flags.y>.5?texture(b,mirrorUV(p)).rgb:procedural(p,variant.y);
+  if(enabled.x<.5)return cb;
   vec3 screen=1.-(1.-ca)*(1.-cb);
   return mix(ca,mix(cb,screen,.25),blend);
 }
@@ -38,7 +42,8 @@ void main(){
   travel=mix(travel,abs(sin(r*18.-time*.18))*.45,rings*.65);
   vec2 p=vec2(cos(a),sin(a))*travel/zoom;p.x/=resolution.x/resolution.y;p+=.5;
   p+=vec2(sin(p.y*12.+time*.17),cos(p.x*10.-time*.13))*displacement*.13;
-  vec3 col=mix(pairColor(oldA,oldB,p,present.zw),pairColor(texA,texB,p,present.xy),transition);
+  vec3 col=pairColor(texA,texB,p,present.xy,layerActive.xy,variants.xy);
+  if(transition<.999)col=mix(pairColor(oldA,oldB,p,present.zw,layerActive.zw,variants.zw),col,transition);
   col*=brightness*luminance*(1.+pulse);col*=1.-.32*smoothstep(.15,.85,r);
   col=col/(1.+col*.25);color=vec4(col,1.);
 }`;

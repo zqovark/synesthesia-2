@@ -125,7 +125,7 @@ export function panelError(body) {
   body.append(n);
 }
 export function openDrawer(title, render, kicker = 'INSTRUMENTO') {
-  lastFocus = document.activeElement;
+  if (!app.drawer) lastFocus = document.activeElement;
   app.drawer = title;
   $('#drawer-title').textContent = title;
   $('#drawer-kicker').textContent = kicker;
