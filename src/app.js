@@ -94,6 +94,9 @@ export function button(text, fn, cls = '') {
 export function input(type, value = '') {
   const n = el('input');
   n.type = type;
+  // A range defaults to integer steps. Preserve fractional baselines while its
+  // caller configures min/max/step, including when restoring a saved scene.
+  if (type === 'range') n.step = 'any';
   n.value = value;
   n.dataset.pad = '';
   return n;

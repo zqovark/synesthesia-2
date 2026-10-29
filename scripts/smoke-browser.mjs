@@ -42,7 +42,7 @@ try {
   await page.waitForFunction(() => /\d+ FPS/.test(document.querySelector('#gpu-status').textContent));
   await page.waitForFunction(async () => !!(await import('/src/app.js')).app.db);
   await page.waitForFunction(() => !!document.querySelector('#macro-edit').onclick && !!document.querySelector('#generate-open').onclick);
-  await page.locator('#param-zoom').fill('1.7');
+  await page.locator('#param-zoom').evaluate(n => n.value = '1.7');
   await page.locator('#param-zoom').dispatchEvent('input');
   await page.locator('#scenes-open').click();
   await page.getByLabel('Nome da composição').fill('Visão persistida');
@@ -180,6 +180,8 @@ try {
   await mkdir('test-results', {
     recursive: true
   });
+  // Stop the test animation before capturing software-rendered frames.
+  await page.evaluate(() => window.requestAnimationFrame = () => 0);
   await page.screenshot({
     path: 'test-results/desktop.png',
     fullPage: true
@@ -199,7 +201,8 @@ try {
   if(page){
     console.error('UI status:',await page.locator('#status').textContent().catch(()=>'?'));
     await mkdir('test-results',{recursive:true});
-    await page.screenshot({path:'test-results/failure.png',fullPage:true,timeout:10000}).catch(()=>{});
+    await page.evaluate(() => window.requestAnimationFrame = () => 0).catch(()=>{});
+    await page.screenshot({path:'test-results/failure.png',fullPage:true,timeout:30000}).catch(()=>{});
   }
   throw error;
 } finally {
