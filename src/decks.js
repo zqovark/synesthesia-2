@@ -5,11 +5,12 @@ consoleEl.setAttribute('aria-label', 'Decks e temporizador de imagens');
 consoleEl.innerHTML = '<div class="transport-heading"><span class="eyebrow">IMAGE DECKS</span><div id="transport-buttons"></div><span id="transport-state" role="status">MIX LIVRE</span></div><div class="decks"><article class="image-deck deck-a"><span class="deck-letter">A</span><div id="deck-art-a" class="deck-art"></div><div class="deck-copy"><small>NO AR</small><strong id="deck-name-a"></strong><span id="deck-time-a"></span></div><div id="deck-duration-a"></div></article><article class="image-deck deck-b"><span class="deck-letter">B</span><div id="deck-art-b" class="deck-art"></div><div class="deck-copy"><small>PRÓXIMA / CUE</small><strong id="deck-name-b"></strong><span id="deck-time-b"></span></div><div id="deck-duration-b"></div></article></div><div class="image-timeline"><span id="image-elapsed">00:00</span><div class="timeline-track"><input id="image-progress" type="range" min="0" max="20" step="0.1" value="0" data-pad aria-label="Posição no tempo da imagem"><div class="time-ticks" aria-hidden="true"></div></div><span id="image-remaining">−00:20</span></div>';
 $('.library-ribbon').before(consoleEl);
 let ticket = 0,
+  playIntent = 0,
   heldMix = 0,
   lastPair = '',
   artKey = '';
 const format = seconds => {
-  const s = Math.max(0, Math.ceil(seconds));
+  const s = Math.max(0, Math.floor(seconds));
   return String(Math.floor(s / 60)).padStart(2, '0') + ':' + String(s % 60).padStart(2, '0');
 };
 function synchronize() {
@@ -47,10 +48,12 @@ async function loadPair() {
   }
 }
 const play = button('▶ PLAY', async () => {
+  const intent=++playIntent;
   synchronize();
   app.transport.config.enabled = true;
   if (app.transport.playing) app.transport.pause();else {
     await loadPair();
+    if(intent!==playIntent)return;
     app.transport.play();
   }
   store();
@@ -58,6 +61,7 @@ const play = button('▶ PLAY', async () => {
 }, 'transport-play');
 play.id = 'image-play';
 const cue = button('CUE', () => {
+  ++playIntent;
   app.transport.cue();
   store();
   refresh();
@@ -66,6 +70,7 @@ cue.id = 'image-cue';
 const next = button('NEXT ›', () => app.decks.next());
 next.id = 'image-next';
 const free = button('MIX LIVRE', () => {
+  ++playIntent;
   app.transport.pause();
   app.transport.config.enabled = false;
   store();
@@ -131,7 +136,7 @@ function refresh() {
   if (document.activeElement !== progress) progress.value = t.elapsed;
   progress.style.setProperty('--played', Math.round(t.progress * 100) + '%');
   $('#image-elapsed').textContent = format(t.elapsed);
-  $('#image-remaining').textContent = '−' + format(t.duration - t.elapsed);
+  $('#image-remaining').textContent = '−' + format(Math.ceil(t.duration - t.elapsed));
   for (const deck of ['a', 'b']) {
     const n = $('#duration-' + deck),
       id = deck === 'a' ? t.current : t.next;
@@ -149,6 +154,7 @@ app.decks = {
     refresh();
   },
   reset() {
+    ++playIntent;
     ++ticket;
     lastPair = '';
     app.transport = new ImageTransport();

@@ -34,6 +34,8 @@ try{
   assert.equal(await page.locator('#voice-enabled').isDisabled(),true);
   assert.equal(await page.locator('#voice-record').isDisabled(),true);
   await page.locator('#drawer-close').click();
+  const layout=await page.evaluate(()=>({macros:document.querySelector('.macro-dock').getBoundingClientRect().bottom,effects:document.querySelector('.effects').getBoundingClientRect().bottom,decks:document.querySelector('.deck-console').getBoundingClientRect().top}));
+  assert.ok(layout.macros<=layout.decks+1&&layout.effects<=layout.decks+1,'decks must not overlap macros or effects');
   await page.locator('#generate-open').click();
   assert.equal(await page.getByRole('button',{name:'Gerar uma imagem',exact:true}).isDisabled(),true);
   assert.match(await page.locator('#drawer-body').textContent(),/versão local/);

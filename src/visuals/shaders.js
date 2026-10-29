@@ -9,6 +9,7 @@ uniform vec2 resolution;
 uniform float time,blend,displacement,spiral,rings,tunnel,symmetry,zoom,brightness,luminance,pulse,transition;
 uniform sampler2D texA,texB,oldA,oldB;
 uniform vec4 present,layerActive,variants;
+uniform float linearBlend;
 float hash(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
 float noise(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);return mix(mix(hash(i),hash(i+vec2(1,0)),f.x),mix(hash(i+vec2(0,1)),hash(i+vec2(1)),f.x),f.y);}
 float fbm(vec2 p){float v=0.,a=.5;for(int i=0;i<5;i++){v+=a*noise(p);p=mat2(1.6,1.2,-1.2,1.6)*p;a*=.5;}return v;}
@@ -32,7 +33,7 @@ vec3 pairColor(sampler2D a,sampler2D b,vec2 p,vec2 flags,vec2 enabled,vec2 varia
   vec3 cb=flags.y>.5?texture(b,mirrorUV(p)).rgb:procedural(p,variant.y);
   if(enabled.x<.5)return cb;
   vec3 screen=1.-(1.-ca)*(1.-cb);
-  return mix(ca,mix(cb,screen,.25),blend);
+  return mix(ca,mix(cb,screen,.25*(1.-linearBlend)),blend);
 }
 void main(){
   vec2 c=(uv-.5)*vec2(resolution.x/resolution.y,1.);float r=length(c),a=atan(c.y,c.x);

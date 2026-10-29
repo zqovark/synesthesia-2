@@ -95,12 +95,8 @@ try {
     body: png
   }));
   await page.goto(base);
-  await page.waitForFunction(async () => {
-    const {
-      app
-    } = await import('/src/app.js');
-    return !!app.voice && !!app.decks;
-  });
+  await page.evaluate(async()=>window.__app=(await import('/src/app.js')).app);
+  await page.waitForFunction(()=>!!window.__app.voice&&!!window.__app.decks);
   assert.equal(await page.locator('#image-play').count(), 1);
   await page.locator('#voice-open').click();
   await page.locator('#voice-enabled').check();
@@ -116,7 +112,7 @@ try {
   await page.locator('#duration-a').fill('2');
   await page.locator('#duration-a').dispatchEvent('input');
   await page.locator('#image-play').click();
-  await page.waitForFunction(() => document.querySelector('#deck-name-a').textContent.includes('portal de ouro'), {
+  await page.waitForFunction(() => document.querySelector('#deck-name-a').textContent.includes('portal de ouro'), null, {
     timeout: 15000
   });
   assert.equal(generations, 1, 'timer must not create paid generations');
@@ -140,8 +136,7 @@ try {
       value: 0
     }))
   });
-  await page.waitForFunction(async () => (await import('/src/app.js')).app.gamepad.neutral);
-  console.log('Before LS:',await page.evaluate(async()=>{const {app}=await import('/src/app.js');return {mapping:app.gamepad.mapping,voice:app.voice.status,busy:app.generation.busy,buttons:window.__pad.buttons.map(b=>b.value)};}));
+  await page.waitForFunction(()=>window.__app.gamepad.neutral);
   await page.evaluate(() => window.__pad.buttons[10].value = 1);
   await page.waitForFunction(() => document.querySelector('#voice-phase')?.textContent.startsWith('Gravando'));
   await page.evaluate(() => window.__pad.buttons[10].value = 0);

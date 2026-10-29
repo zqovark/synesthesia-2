@@ -40,7 +40,8 @@ try {
   });
   await page.goto(base);
   await page.waitForFunction(() => /\d+ FPS/.test(document.querySelector('#gpu-status').textContent));
-  await page.waitForFunction(async () => !!(await import('/src/app.js')).app.db);
+  await page.evaluate(async()=>window.__app=(await import('/src/app.js')).app);
+  await page.waitForFunction(()=>!!window.__app.db);
   await page.waitForFunction(() => !!document.querySelector('#macro-edit').onclick && !!document.querySelector('#generate-open').onclick);
   await page.locator('#param-zoom').evaluate(n => n.value = '1.7');
   await page.locator('#param-zoom').dispatchEvent('input');
@@ -54,6 +55,7 @@ try {
   await page.locator('#drawer-close').click();
   await page.reload();
   await page.waitForFunction(() => document.querySelector('#scene-title').textContent === 'Visão persistida');
+  await page.evaluate(async()=>window.__app=(await import('/src/app.js')).app);
   assert.equal(await page.locator('#param-zoom').inputValue(), '1.7');
   await page.locator('#macro-edit').click();
   await page.getByLabel('Nome', {
@@ -71,14 +73,10 @@ try {
     mimeType: 'image/png',
     buffer: png
   });
-  await page.waitForFunction(async () => {
-    const {
-      app
-    } = await import('/src/app.js');
-    return app.renderer.cache.size === 1;
-  });
+  await page.waitForFunction(()=>window.__app.renderer.cache.size===1);
   await page.reload();
   await page.waitForFunction(() => document.querySelector('#asset-count').textContent.startsWith('03'));
+  await page.evaluate(async()=>window.__app=(await import('/src/app.js')).app);
   // Synthetic WAV through the real browser decoder and Web Audio analyser.
   const rate = 24000,
     count = rate * 3,
@@ -102,12 +100,7 @@ try {
     mimeType: 'audio/wav',
     buffer: wav
   });
-  await page.waitForFunction(async () => {
-    const {
-      app
-    } = await import('/src/app.js');
-    return app.audio.sample(performance.now() / 1000, 1 / 60).low > .05;
-  });
+  await page.waitForFunction(()=>window.__app.audio.sample(performance.now()/1000,1/60).low>.05);
   // Standard Xbox simulation: RT adjusts the macro and never toggles performance.
   await page.evaluate(() => window.__pad = {
     index: 0,

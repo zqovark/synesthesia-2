@@ -475,6 +475,8 @@ function tick(now) {
       $('#source-' + key).textContent = 'M ' + s.manual.toFixed(2) + '  Σ ' + s.macro.toFixed(2) + '  ♪ ' + s.audio.toFixed(2);
       $('.parameter[data-key="' + key + '"]').classList.toggle('chosen', Object.keys(PARAMETERS)[app.selectedParameter] === key);
     }
+    $('#param-blend').disabled=!!app.decks?.managed;
+    if(app.decks?.managed){$('#value-blend').textContent=app.transport.mix.toFixed(2);$('#source-blend').textContent='DECK A → B · TEMPORIZADOR';}
     $$('#macros .macro').forEach((n, i) => {
       const m = k.scene.macros[i];
       if (!m) return;

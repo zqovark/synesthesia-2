@@ -60,7 +60,7 @@ export class Renderer {
     const at = gl.getAttribLocation(this.program, 'position');
     gl.enableVertexAttribArray(at);
     gl.vertexAttribPointer(at, 2, gl.FLOAT, false, 0, 0);
-    this.uniforms = Object.fromEntries(['resolution', 'time', 'blend', 'displacement', 'spiral', 'rings', 'tunnel', 'symmetry', 'zoom', 'brightness', 'luminance', 'pulse', 'transition', 'present', 'layerActive', 'variants', 'texA', 'texB', 'oldA', 'oldB'].map(k => [k, gl.getUniformLocation(this.program, k)]));
+    this.uniforms = Object.fromEntries(['resolution', 'time', 'blend', 'linearBlend', 'displacement', 'spiral', 'rings', 'tunnel', 'symmetry', 'zoom', 'brightness', 'luminance', 'pulse', 'transition', 'present', 'layerActive', 'variants', 'texA', 'texB', 'oldA', 'oldB'].map(k => [k, gl.getUniformLocation(this.program, k)]));
     this.fallback = gl.createTexture();
     gl.bindTexture(gl.TEXTURE_2D, this.fallback);
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([0, 0, 0, 255]));
@@ -134,6 +134,7 @@ export class Renderer {
     gl.useProgram(this.program);
     gl.uniform2f(this.uniforms.resolution, w, h);
     gl.uniform1f(this.uniforms.time, time);
+    gl.uniform1f(this.uniforms.linearBlend,scene.transport?.enabled?1:0);
     for (const [key, value] of Object.entries(params)) gl.uniform1f(this.uniforms[key], value);
     gl.uniform1f(this.uniforms.luminance, scene.luminance);
     gl.uniform1f(this.uniforms.pulse, beat * scene.pulse);
