@@ -2,47 +2,16 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createProviders, validateRequest } from '../server/providers.mjs';
 import { Jobs } from '../server/jobs.mjs';
-const png = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jH1kAAAAASUVORK5CYII=';
 const until = async predicate => {
   for (let i = 0; i < 100 && !predicate(); i++) await new Promise(r => setTimeout(r, 5));
   assert.ok(predicate());
 };
-test('NVIDIA adapter sends the documented image-generation contract and metadata', async () => {
-  let request;
-  const providers = createProviders({
-    NVIDIA_API_KEY: 'test-secret'
-  }, async (url, options) => {
-    request = {
-      url,
-      options,
-      body: JSON.parse(options.body)
-    };
-    return new Response(JSON.stringify({
-      artifacts: [{
-        base64: png,
-        seed: 42,
-        finishReason: 'SUCCESS'
-      }]
-    }));
-  });
-  const p = providers.get('nvidia-sdxl'),
-    result = await p.generate(validateRequest({
-      prompt: 'cosmos',
-      seed: 42
-    }), new AbortController().signal);
-  assert.equal(request.url, 'https://ai.api.nvidia.com/v1/genai/stabilityai/stable-diffusion-xl');
-  assert.equal(request.body.seed, 42);
-  assert.equal(request.body.text_prompts[0].text, 'cosmos');
-  assert.equal(result.type, 'image/png');
-  assert.equal(result.actualSeed, 42);
-  assert.ok(!JSON.stringify(result).includes('test-secret'));
-});
-test('provider errors are actionable and do not expose credentials', async () => {
+test('request validation and local provider URL are enforced before any call', async () => {
   const p = createProviders({
-    NVIDIA_API_KEY: 'secret'
+    OPENAI_API_KEY: 'secret'
   }, async () => new Response('upstream secret', {
     status: 401
-  })).get('nvidia-sdxl');
+  })).get('openai');
   await assert.rejects(p.generate(validateRequest({
     prompt: 'x'
   })), /Credencial/);

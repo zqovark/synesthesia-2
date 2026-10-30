@@ -1,6 +1,7 @@
 import { app, $, el, input, field, select, button, help, panelError, openDrawer, notify, safe, addImage } from '../app.js';
 import { PRESETS } from './presets.js';
 import { STATIC_PREVIEW } from '../runtime.js';
+import { chooseImageProvider } from './provider-selection.js';
 let presets = structuredClone(PRESETS),
   selected = presets[0].id,
   draft = {
@@ -37,14 +38,14 @@ async function providers() {
   const r = await fetch('/api/session');
   if (!r.ok) throw new Error('Não foi possível consultar os provedores.');
   const list = (await r.json()).providers ?? [];
-  if (!list.some(p => p.id === provider)) provider = (list.find(p => p.configured && p.paid === false) ?? list.find(p => p.configured) ?? list[0])?.id ?? '';
+  provider = chooseImageProvider(list, provider);
   const limit = list.find(p => p.id === provider)?.limits?.cfgMax;
   if (limit && draft.cfg > limit) draft.cfg = limit;
   return list;
 }
 async function providerControls(container, onChange = () => {}) {
   if (STATIC_PREVIEW) {
-    container.append(help('NVIDIA Cosmos3 Nano (Free Endpoint), OpenAI, Google Gemini, Black Forest Labs, fal.ai e Replicate estão disponíveis na versão local.'));
+    container.append(help('OpenAI (GPT Image) e Google Gemini estão disponíveis na versão local, além da geração local com AUTOMATIC1111 / Forge, que não exige chave.'));
     return;
   }
   const list = await providers();

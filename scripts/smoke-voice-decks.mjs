@@ -52,9 +52,9 @@ try {
       providers: providerList()
     }
   }));
-  await page.route('**/api/providers/fal', route => {
+  await page.route('**/api/providers/openai', route => {
     assert.equal(route.request().postDataJSON().apiKey, 'session-test-key');
-    adapters.get('fal').configure('session-test-key');
+    adapters.get('openai').configure('session-test-key');
     return route.fulfill({ json: { providers: providerList() } });
   });
   await page.route('**/api/voice/transcribe', route => {
@@ -70,7 +70,7 @@ try {
   await page.route('**/api/jobs', route => {
     generations++;
     assert.ok(route.request().postDataJSON().confirmed);
-    assert.equal(route.request().postDataJSON().provider, 'fal');
+    assert.equal(route.request().postDataJSON().provider, 'openai');
     return route.fulfill({
       status: 202,
       json: {
@@ -87,7 +87,7 @@ try {
       stage: 'Imagem pronta',
       hasImage: true,
       metadata: {
-        provider: 'fal',
+        provider: 'openai',
         model: 'simulated',
         prompt: 'voice test',
         seed: 42
@@ -104,10 +104,8 @@ try {
   assert.equal(await page.locator('#image-play').count(), 1);
   await page.locator('#generate-open').click();
   await page.locator('#image-provider').waitFor();
-  assert.equal(await page.locator('#image-provider option').count(), 7);
-  assert.equal(await page.getByLabel('Seed', { exact: true }).isDisabled(), true);
-  await page.locator('#image-provider').selectOption('fal');
-  assert.equal(await page.getByLabel('Seed', { exact: true }).isDisabled(), false);
+  assert.equal(await page.locator('#image-provider option').count(), 2);
+  await page.locator('#image-provider').selectOption('openai');
   await page.locator('#provider-api-key').fill('session-test-key');
   await page.getByRole('button', { name: 'Usar chave nesta sessão', exact: true }).click();
   await page.waitForFunction(() => document.querySelector('#status').textContent.includes('Chave configurada'));
@@ -120,7 +118,7 @@ try {
   assert.ok(!JSON.stringify(settings).includes('session-test-key'));
   await page.locator('#voice-open').click();
   await page.locator('#image-provider').waitFor();
-  assert.equal(await page.locator('#image-provider').inputValue(), 'fal');
+  assert.equal(await page.locator('#image-provider').inputValue(), 'openai');
   await page.locator('#voice-enabled').check();
   await page.locator('#voice-record').click();
   await page.waitForFunction(() => document.querySelector('#voice-phase').textContent.startsWith('Gravando'));

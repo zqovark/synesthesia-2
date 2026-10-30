@@ -51,57 +51,16 @@ export function image(base64) {
 }
 export function createProviders(env = process.env, fetcher = fetch) {
   const providers = cloudProviders(env, fetcher);
-  providers.set('nvidia-sdxl', {
-    id: 'nvidia-sdxl',
-    name: 'NVIDIA · Stable Diffusion XL · legado',
-    model: 'stabilityai/stable-diffusion-xl',
-    configured: Boolean(env.NVIDIA_API_KEY),
-    paid: true,
-    async generate(p, signal) {
-      if (!env.NVIDIA_API_KEY) throw new Error('Configure NVIDIA_API_KEY no serviço local.');
-      const payload = {
-        height: 1024,
-        width: 1024,
-        text_prompts: [{
-          text: p.prompt,
-          weight: 1
-        }, ...(p.negative ? [{
-          text: p.negative,
-          weight: -1
-        }] : [])],
-        cfg_scale: p.cfg,
-        clip_guidance_preset: 'NONE',
-        sampler: 'K_DPM_2_ANCESTRAL',
-        samples: 1,
-        seed: p.seed,
-        steps: p.steps,
-        style_preset: 'none'
-      };
-      const response = await fetcher('https://ai.api.nvidia.com/v1/genai/stabilityai/stable-diffusion-xl', {
-        method: 'POST',
-        redirect: 'error',
-        headers: {
-          Authorization: 'Bearer ' + env.NVIDIA_API_KEY,
-          Accept: 'application/json',
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(payload),
-        signal
-      });
-      const result = await responseJson(response),
-        artifact = result.artifacts?.[0];
-      if (artifact?.finishReason && artifact.finishReason !== 'SUCCESS') throw new Error('O provedor não concluiu a imagem: ' + artifact.finishReason);
-      return {
-        ...image(artifact?.base64),
-        actualSeed: artifact?.seed ?? null,
-        parameters: payload
-      };
-    }
-  });
   const local = env.A1111_URL;
   if (local) {
     const url = new URL(local);
     if (url.protocol !== 'http:' || !['127.0.0.1', 'localhost', '[::1]'].includes(url.hostname) || url.username || url.password) throw new Error('A1111_URL deve apontar para um serviço HTTP local.');
+    const dimensions = {};
+    for (const key of ['A1111_WIDTH', 'A1111_HEIGHT']) {
+      const value = env[key] === undefined ? 1024 : Number(env[key]);
+      if (!Number.isInteger(value) || value < 256 || value > 2048 || value % 8 !== 0) throw new Error(key + ' deve ser um inteiro múltiplo de 8 entre 256 e 2048.');
+      dimensions[key] = value;
+    }
     providers.set('a1111', {
       id: 'a1111',
       name: 'Local · AUTOMATIC1111',
@@ -115,8 +74,8 @@ export function createProviders(env = process.env, fetcher = fetch) {
           seed: p.seed,
           steps: p.steps,
           cfg_scale: p.cfg,
-          width: 1024,
-          height: 1024,
+          width: dimensions.A1111_WIDTH,
+          height: dimensions.A1111_HEIGHT,
           batch_size: 1,
           n_iter: 1,
           sampler_name: 'Euler a',

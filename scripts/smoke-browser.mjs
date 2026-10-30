@@ -124,8 +124,8 @@ try {
     json: {
       token: 'test',
       providers: [{
-        id: 'nvidia-sdxl',
-        name: 'NVIDIA test',
+        id: 'openai',
+        name: 'OpenAI test',
         configured: true,
         paid: true
       }]
@@ -146,7 +146,7 @@ try {
       stage: 'Pronta',
       hasImage: true,
       metadata: {
-        provider: 'nvidia-sdxl',
+        provider: 'openai',
         model: 'simulated',
         prompt: 'test',
         seed: 123

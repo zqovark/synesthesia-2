@@ -4,7 +4,7 @@
 
 ## Executado no ambiente de desenvolvimento
 
-- 15 testes Node: arbitragem aditiva e limites; retorno ao baseline; troca de cena; entradas inválidas; inversão de macros; FFT com sinais sintéticos; detector de batidas; zona morta; botões mantidos e reconexão; contrato NVIDIA com HTTP simulado; erros de provedor; consentimento; concorrência, cancelamento e timeout de jobs; isolamento HTTP/origem/token; relógio manual; identidade das matérias procedurais; descarte de texturas em carregamentos concorrentes e após destruição.
+- Testes Node: arbitragem aditiva e limites; retorno ao baseline; troca de cena; entradas inválidas; inversão de macros; FFT com sinais sintéticos; detector de batidas; zona morta; botões mantidos e reconexão; contratos OpenAI e Gemini com HTTP simulado; erros de provedor; consentimento; concorrência, cancelamento e timeout de jobs; isolamento HTTP/origem/token; relógio manual; identidade das matérias procedurais; descarte de texturas em carregamentos concorrentes e após destruição.
 - `npm run check`: todos os módulos JavaScript analisados pelo Node.
 - `python scripts/check-gpu.py`: shaders reais compilados e vinculados; frame renderizado com OpenGL ES 3.2 / Mesa 25.2.8; saída não vazia/opaca; zoom e simetria alteraram pixels; nenhum erro OpenGL. É integração gráfica real por Mesa, sem navegador. Não mede desempenho na RTX 3050.
 
@@ -18,7 +18,7 @@ As capturas do CI são evidências para revisão visual; o teste de overflow soz
 
 1. Linux/Omarchy: tocar música fora do app, iniciar “Computador”, verificar bandas e latência. Desligar som e confirmar retorno ao baseline. Trocar saída, parar/reiniciar a captura. Ausência de `parec`, servidor Pulse ou monitor deve informar erro e manter composição operável.
 2. Xbox físico: conectar em repouso e com gatilho pressionado; testar neutralização, deriva, botões, navegação completa dos painéis e reconexão. Testar mapeamentos no navegador efetivamente utilizado.
-3. NVIDIA: com credencial própria, confirmar acesso, formato real da resposta, cancelamento, limites e uma imagem gerada. Não realizado nesta sessão; não há credencial disponível nem chamadas pagas autorizadas implicitamente pela implementação.
+3. Provedores hospedados (OpenAI, Gemini): com credencial própria, confirmar acesso, formato real da resposta, cancelamento, limites e uma imagem gerada. Não realizado nesta sessão; não há credencial disponível nem chamadas pagas autorizadas implicitamente pela implementação.
 4. AUTOMATIC1111: confirmar checkpoint real e API local, seed retornada e efeito da concorrência sobre a GPU. Cancelar a requisição não interrompe necessariamente o processo remoto.
 5. Nitro V15: duas texturas 2048 px, viewport 1920×1080, sessão de 20 minutos; registrar FPS do HUD, memória e estabilidade de recursos enquanto importa/exclui matérias e troca cenas. Meta: 60 FPS; medir antes de afirmar.
 6. Renderizador: trocar matérias rapidamente, provocar perda/restauração de contexto com ferramentas do navegador, reselecionar imagens após restauração e verificar descartes. Comparar antes/depois com GPU profiler.
