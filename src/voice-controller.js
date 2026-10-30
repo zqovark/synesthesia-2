@@ -20,6 +20,7 @@ const labels = {
   recording: 'Gravando · pressione novamente para finalizar',
   recognizing: 'Escutando · diga como será a próxima imagem',
   transcribing: 'Transcrevendo o pedido',
+  review: 'Revise o texto e clique em “Gerar imagem”',
   generating: 'Gerando a próxima imagem',
   queued: 'Imagem pronta no deck B',
   cancelled: 'Pedido cancelado',
@@ -31,13 +32,21 @@ function render() {
   const state = $('#voice-phase');
   if (state) state.textContent = labels[phase] ?? phase;
   const text = $('#voice-transcript');
-  if (text) text.textContent = transcript;
+  // Keep the editable field in sync with the transcript, but never clobber what
+  // the user is actively editing before generation.
+  if (text && text !== document.activeElement) text.value = transcript;
+  if (text) text.disabled = STATIC_PREVIEW || capture.listening || ['transcribing', 'generating'].includes(phase);
   const error = $('#voice-error');
   if (error) error.textContent = errorMessage;
   const control = $('#voice-record');
   if (control) {
-    control.textContent = capture.listening ? '■ Finalizar e gerar' : '◉ Falar e gerar próxima';
+    control.textContent = capture.listening ? '■ Finalizar gravação' : (phase === 'review' ? '◉ Regravar' : '◉ Falar');
     control.disabled = STATIC_PREVIEW || !enabled || ['transcribing', 'generating'].includes(phase);
+  }
+  const generate = $('#voice-generate');
+  if (generate) {
+    generate.hidden = phase !== 'review';
+    generate.disabled = STATIC_PREVIEW || phase !== 'review' || !transcript.trim();
   }
   const provider = $('#image-provider');
   if (provider) provider.disabled = capture.listening || ['transcribing', 'generating'].includes(phase);
@@ -58,7 +67,7 @@ const capture = new VoiceInput({
     if (state !== 'idle') setPhase(state);else render();
   },
   onError: fail,
-  onText: text => void submit(text, operation),
+  onText: text => received(text, operation),
   onAudio: blob => void transcribe(blob, operation)
 });
 async function persist() {
@@ -67,6 +76,23 @@ async function persist() {
     enabled,
     mode
   });
+}
+// Transcribed text is shown for review and editing; generation waits for an
+// explicit "Gerar imagem" click (or re-record) so the user controls the prompt.
+function received(text, ticket) {
+  if (ticket !== operation) return;
+  transcript = text;
+  setPhase('review');
+}
+async function confirmGenerate() {
+  if (phase !== 'review') return;
+  const text = (($('#voice-transcript')?.value ?? transcript)).trim();
+  if (!text) {
+    errorMessage = 'Descreva a imagem antes de gerar.';
+    render();
+    return;
+  }
+  await submit(text, operation);
 }
 async function submit(text, ticket) {
   if (ticket !== operation) return;
@@ -96,7 +122,7 @@ async function transcribe(blob, ticket) {
       signal: abort.signal
     });
     if (ticket !== operation) return;
-    await submit(result.text, ticket);
+    received(result.text, ticket);
   } catch (error) {
     if (ticket === operation) fail(error);
   }
@@ -109,11 +135,12 @@ function cancel() {
   if (phase === 'generating') void safe(() => app.generation.cancel())();
   phase = 'cancelled';
   errorMessage = '';
+  transcript = '';
   render();
 }
 function panel() {
   openDrawer('Próxima imagem por voz', body => {
-    body.append(help(STATIC_PREVIEW ? 'O pedido por voz com geração de imagem está disponível na versão local. O temporizador e os decks funcionam neste preview.' : 'Ative a opção, pressione o botão ou LS no controle e descreva a próxima imagem. Pressione novamente para finalizar a gravação. A imagem pronta entra no deck B; o temporizador continua exibindo a imagem atual.'));
+    body.append(help(STATIC_PREVIEW ? 'O pedido por voz com geração de imagem está disponível na versão local. O temporizador e os decks funcionam neste preview.' : 'Como usar: 1) ative a voz abaixo; 2) clique em “Falar” ou pressione LS; 3) descreva a imagem; 4) clique em “Finalizar gravação”; 5) revise ou edite o texto transcrito; 6) clique em “Gerar imagem”. A imagem pronta entra no deck B; o temporizador continua exibindo a imagem atual.'));
     const opt = input('checkbox');
     opt.id = 'voice-enabled';
     opt.checked = enabled;
@@ -143,14 +170,27 @@ function panel() {
     const state = el('div', 'voice-state');
     state.id = 'voice-phase';
     state.setAttribute('role', 'status');
-    const text = el('p', 'voice-transcript');
+    const text = el('textarea', 'voice-transcript');
     text.id = 'voice-transcript';
+    text.rows = 3;
+    text.placeholder = 'O texto reconhecido aparece aqui para você revisar antes de gerar.';
+    text.setAttribute('aria-label', 'Texto reconhecido · edite se necessário');
+    text.value = transcript;
+    text.oninput = () => {
+      transcript = text.value;
+      const generate = $('#voice-generate');
+      if (generate) generate.disabled = phase !== 'review' || !transcript.trim();
+    };
     const error = el('p', 'error');
     error.id = 'voice-error';
-    const record = button('◉ Falar e gerar próxima', () => toggle());
+    const record = button('◉ Falar', () => toggle());
     record.id = 'voice-record';
-    body.append(state, text, error, record, button('Cancelar pedido', cancel));
+    const generate = button('✦ Gerar imagem', () => confirmGenerate());
+    generate.id = 'voice-generate';
+    generate.hidden = phase !== 'review';
+    body.append(state, text, error, record, generate, button('Cancelar pedido', cancel));
     if (!STATIC_PREVIEW && capabilities?.voice?.configured === false) body.append(help('Para gravação, configure GROQ_API_KEY ou VOICE_TRANSCRIPTION_URL no serviço local. O modo de reconhecimento do navegador pode ser usado quando disponível.'));
+    if (!STATIC_PREVIEW && capabilities?.voice?.configured) body.append(help(capabilities.voice.local ? 'Transcrição local configurada: o áudio é processado neste computador, em memória, e não é salvo.' : 'Transcrição configurada em serviço externo ao computador.'));
     panelError(body);
     render();
   }, 'VOICE → NEXT IMAGE');
