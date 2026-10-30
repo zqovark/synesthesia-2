@@ -116,3 +116,16 @@ test('ASR handles missing configuration, provider failure and empty speech', asy
     VOICE_TRANSCRIPTION_URL: 'http://example.com/asr'
   }), /HTTPS/);
 });
+
+test('loopback transcription is reported as local and remote endpoints are not', () => {
+  assert.equal(new VoiceService({ VOICE_TRANSCRIPTION_URL: 'http://127.0.0.1:9000/v1/audio/transcriptions' }).status().local, true);
+  assert.equal(new VoiceService({ VOICE_TRANSCRIPTION_URL: 'http://localhost:9000/v1/audio/transcriptions' }).status().local, true);
+  assert.equal(new VoiceService({ GROQ_API_KEY: 'x' }).status().local, false);
+  assert.equal(new VoiceService({}).status().local, false);
+});
+
+test('a 422 from the local ASR is reported as unrecognized speech, not as an HTTP error', async () => {
+  const service = new VoiceService({ VOICE_TRANSCRIPTION_URL: 'http://127.0.0.1:9000/v1/audio/transcriptions' }, async () => new Response('{"error":"silence"}', { status: 422 }));
+  const audio = Buffer.from(await pcmWav([0]).arrayBuffer()).toString('base64');
+  await assert.rejects(service.transcribe({ audio, confirmed: true }), /Não foi possível reconhecer/);
+});

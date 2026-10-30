@@ -10,11 +10,13 @@ export class VoiceService {
       const u = new URL(this.endpoint);
       if (u.username || u.password || !(u.protocol === 'https:' || u.protocol === 'http:' && ['localhost', '127.0.0.1', '[::1]'].includes(u.hostname))) throw new Error('VOICE_TRANSCRIPTION_URL deve usar HTTPS ou HTTP local.');
     }
+    this.local = !!this.endpoint && ['localhost', '127.0.0.1', '[::1]'].includes(new URL(this.endpoint).hostname);
     this.busy = false;
   }
   status() {
     return {
       configured: !!this.endpoint,
+      local: this.local,
       model: this.model || null,
       language: this.language
     };
@@ -46,6 +48,7 @@ export class VoiceService {
       });
       if (!response.ok) {
         await response.body?.cancel();
+        if (response.status === 422) throw new Error('Não foi possível reconhecer um pedido. Tente falar novamente.');
         throw new Error(response.status === 401 || response.status === 403 ? 'Credencial de transcrição recusada.' : 'Transcrição retornou HTTP ' + response.status + '.');
       }
       const reader = response.body.getReader(),
